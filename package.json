@@ -1,9 +1,9 @@
 {
   "name": "pf2e-market-forge",
-  "version": "0.0.4",
+  "version": "0.0.5",
   "private": true,
   "type": "module",
-  "description": "Contract-tested PF2E Market Forge with Milestone 3 purchase cart and checkout dry-run validation",
+  "description": "Contract-tested PF2E Market Forge with Milestone 4 real purchase execution and rollback safety",
   "scripts": {
     "test": "node --test tests/*.test.js"
   }

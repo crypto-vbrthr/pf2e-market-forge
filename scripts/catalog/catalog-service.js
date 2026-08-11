@@ -39,7 +39,7 @@ export class CatalogService {
     else this.#indexCache.clear();
   }
 
-  async getEntry(uuid, { profile, maximumItemLevel = null } = {}) {
+  async getEntry(uuid, { profile, maximumItemLevel = null, fresh = false } = {}) {
     if (typeof uuid !== "string" || !uuid) throw new TypeError("Catalog entry UUID is required.");
     if (!profile || typeof profile !== "object") throw new TypeError("Catalog lookup requires a MarketProfile.");
 
@@ -48,7 +48,7 @@ export class CatalogService {
       : [];
 
     for (const packId of configuredSources) {
-      const result = await this.#loadPack(packId);
+      const result = fresh ? await this.#loadPackUncached(packId) : await this.#loadPack(packId);
       const entry = result.entries.find((candidate) => candidate.uuid === uuid);
       if (!entry) continue;
       return {

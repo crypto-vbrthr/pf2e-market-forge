@@ -1,8 +1,8 @@
 {
   "id": "pf2e-market-forge",
   "title": "PF2E Market Forge",
-  "description": "Rules-aware PF2e market workflow. Milestone 3 adds a real purchase cart, live market pricing, actor balance checks, and authoritative checkout dry-run validation.",
-  "version": "0.0.4",
+  "description": "Rules-aware PF2e market workflow. Milestone 4 adds real purchase checkout with authoritative repricing, PF2e currency deduction, inventory stacking, compensating rollback, transaction locking, and chat receipts.",
+  "version": "0.0.5",
   "authors": [
     {
       "name": "Bully"

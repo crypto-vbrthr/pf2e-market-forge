@@ -5,6 +5,8 @@ import { MODULE_ID } from "../core/constants.js";
 import { resolveMarketMaximumForActor } from "../market/market-level-context.js";
 import { createDefaultMarketProfile } from "../market/profile-defaults.js";
 import { CurrencyAdapter } from "../pf2e/currency-adapter.js";
+import { InventoryAdapter } from "../pf2e/inventory-adapter.js";
+import { ReceiptService } from "../receipts/receipt-service.js";
 import { PriceService } from "../pricing/price-service.js";
 import { TransactionService } from "../transactions/transaction-service.js";
 import { createCatalogViewState, toggleExpandedUuid, updateCatalogViewState } from "./catalog-view-state.js";
@@ -42,12 +44,15 @@ export class MarketApplication extends HandlebarsApplicationMixin(ApplicationV2)
   #cartService;
   #priceService;
   #currencyAdapter;
+  #inventoryAdapter;
+  #receiptService;
   #transactionService;
   #catalogFilters = createCatalogViewState();
   #expandedItems = new Set();
   #previews = new Map();
   #previewErrors = new Map();
   #checkoutState = null;
+  #checkoutBusy = false;
   #searchTimer = null;
 
   constructor({
@@ -59,6 +64,8 @@ export class MarketApplication extends HandlebarsApplicationMixin(ApplicationV2)
     cartService = null,
     priceService = null,
     currencyAdapter = null,
+    inventoryAdapter = null,
+    receiptService = null,
     transactionService = null
   } = {}) {
     super();
@@ -70,20 +77,34 @@ export class MarketApplication extends HandlebarsApplicationMixin(ApplicationV2)
     this.#previewService = previewService ?? new ItemPreviewService();
     this.#cartService = cartService ?? new CartService();
     this.#priceService = priceService ?? new PriceService();
-    this.#currencyAdapter = currencyAdapter ?? new CurrencyAdapter({
-      actorProvider: async (uuid) => {
-        if (this.#actor?.uuid === uuid) return this.#actor;
-        return typeof globalThis.fromUuid === "function" ? globalThis.fromUuid(uuid) : null;
-      }
-    });
+    const actorProvider = async (uuid) => {
+      if (this.#actor?.uuid === uuid) return this.#actor;
+      return typeof globalThis.fromUuid === "function" ? globalThis.fromUuid(uuid) : null;
+    };
+    this.#currencyAdapter = currencyAdapter ?? new CurrencyAdapter({ actorProvider });
+    this.#inventoryAdapter = inventoryAdapter ?? new InventoryAdapter({ actorProvider });
+    this.#receiptService = receiptService ?? new ReceiptService({ actorProvider });
     this.#transactionService = transactionService ?? new TransactionService({
       profileProvider: async (profileId) => profileId === this.#profile.id ? this.#profile : null,
-      productResolver: async (product, { profile, maximumItemLevel }) => {
+      productResolver: async (product, { profile, maximumItemLevel, authoritative }) => {
         if (product.kind !== "item") return null;
-        return this.#catalogService.getEntry(product.sourceUuid, { profile, maximumItemLevel });
+        return this.#catalogService.getEntry(product.sourceUuid, { profile, maximumItemLevel, fresh: authoritative });
       },
       priceService: this.#priceService,
-      balanceProvider: async (actorUuid) => this.#currencyAdapter.getBalance(actorUuid)
+      balanceProvider: async (actorUuid) => this.#currencyAdapter.getBalance(actorUuid),
+      currencyAdapter: this.#currencyAdapter,
+      inventoryAdapter: this.#inventoryAdapter,
+      receiptService: this.#receiptService,
+      permissionProvider: async ({ userId, itemActorUuid, currencyActorUuid }) => {
+        const user = globalThis.game?.users?.get?.(userId) ?? globalThis.game?.user ?? null;
+        if (!user) return false;
+        const itemActor = await actorProvider(itemActorUuid);
+        const currencyActor = itemActorUuid === currencyActorUuid ? itemActor : await actorProvider(currencyActorUuid);
+        return Boolean(
+          itemActor?.canUserModify?.(user, "update") &&
+          currencyActor?.canUserModify?.(user, "update")
+        );
+      }
     });
   }
 
@@ -145,8 +166,8 @@ export class MarketApplication extends HandlebarsApplicationMixin(ApplicationV2)
       sellTab: tabs.sell,
       cartTab: tabs.cart,
       inventoryCount: this.#physicalItemCount(actor),
-      milestone: "3",
-      readOnlyMilestone: true,
+      milestone: "4",
+      readOnlyMilestone: false,
       catalog: {
         ...catalog,
         entries: preparedEntries,
@@ -170,7 +191,8 @@ export class MarketApplication extends HandlebarsApplicationMixin(ApplicationV2)
         deficitLabel: this.#formatCopper(deficit),
         itemActorName: actor?.name ?? game.i18n.localize("PF2E_MARKET_FORGE.NotAvailable"),
         currencyActorName: actor?.name ?? game.i18n.localize("PF2E_MARKET_FORGE.NotAvailable"),
-        canDryRun: Boolean(actor && buyLines.length)
+        canDryRun: Boolean(actor && buyLines.length && !this.#checkoutBusy),
+        canCheckout: Boolean(actor && buyLines.length && affordable && !this.#checkoutBusy)
       },
       checkout: this.#prepareCheckoutState(),
       marketLevelContext: {
@@ -278,6 +300,16 @@ export class MarketApplication extends HandlebarsApplicationMixin(ApplicationV2)
       }
     });
 
+    this.element.querySelector("[data-market-checkout]")?.addEventListener("click", async (event) => {
+      const button = event.currentTarget;
+      button.disabled = true;
+      try {
+        await this.#runCheckout();
+      } finally {
+        if (button.isConnected) button.disabled = false;
+      }
+    });
+
     this.#activateEnrichedContent();
   }
 
@@ -317,17 +349,7 @@ export class MarketApplication extends HandlebarsApplicationMixin(ApplicationV2)
     const state = this.#cartService.getState();
     if (!actor || state.buyLines.length === 0) return;
 
-    const request = {
-      direction: "buy",
-      profileId: this.#profile.id,
-      itemActorUuid: actor.uuid,
-      currencyActorUuid: actor.uuid,
-      requestedByUserId: globalThis.game?.user?.id ?? "unknown-user",
-      lines: state.buyLines.map((line) => ({
-        product: structuredClone(line.product),
-        quantity: line.quantity
-      }))
-    };
+    const request = this.#buildCheckoutRequest(state.buyLines);
 
     try {
       const maximumItemLevel = this.#resolveLevelContext().result?.maximumItemLevel ?? null;
@@ -353,6 +375,84 @@ export class MarketApplication extends HandlebarsApplicationMixin(ApplicationV2)
     await this.render();
   }
 
+  async #runCheckout() {
+    if (this.#checkoutBusy) return;
+    const actor = this.#actor;
+    const state = this.#cartService.getState();
+    if (!actor || state.buyLines.length === 0) return;
+
+    this.#checkoutBusy = true;
+    const request = this.#buildCheckoutRequest(state.buyLines);
+    this.#checkoutState = { status: "running", total: this.#cartService.getQuotedTotal("buy"), balance: await this.#safeBalance(actor.uuid), remaining: null, errors: [] };
+    await this.render();
+
+    try {
+      const maximumItemLevel = this.#resolveLevelContext().result?.maximumItemLevel ?? null;
+      const result = await this.#transactionService.checkout(request, { maximumItemLevel });
+      const balance = await this.#safeBalance(actor.uuid);
+
+      if (result.status === "completed") {
+        this.#cartService.clear("buy");
+        this.#checkoutState = {
+          status: "completed",
+          total: result.total,
+          balance,
+          remaining: result.remainingBalance ?? balance,
+          errors: [],
+          warnings: result.warnings ?? [],
+          transactionId: result.transactionId
+        };
+        ui.notifications?.info?.(game.i18n.format("PF2E_MARKET_FORGE.Cart.PurchaseSuccess", { total: this.#formatCopper(result.total) }));
+      } else {
+        this.#checkoutState = {
+          status: result.status,
+          total: result.total ?? 0,
+          balance,
+          remaining: result.remainingBalance ?? null,
+          errors: result.errors ?? ["transaction-error"],
+          warnings: result.warnings ?? [],
+          transactionId: result.transactionId ?? null,
+          cause: result.cause ?? null
+        };
+        const key = result.status === "rollback-failed"
+          ? "PF2E_MARKET_FORGE.Cart.RollbackFailedNotification"
+          : "PF2E_MARKET_FORGE.Cart.PurchaseFailedNotification";
+        ui.notifications?.error?.(game.i18n.localize(key));
+      }
+    } catch (error) {
+      console.error(`${MODULE_ID} | Purchase checkout failed`, error);
+      this.#checkoutState = {
+        status: "error",
+        total: 0,
+        balance: await this.#safeBalance(actor.uuid),
+        remaining: null,
+        errors: ["transaction-error"],
+        warnings: [],
+        cause: error instanceof Error ? error.message : String(error)
+      };
+      ui.notifications?.error?.(game.i18n.localize("PF2E_MARKET_FORGE.Cart.PurchaseFailedNotification"));
+    } finally {
+      this.#checkoutBusy = false;
+    }
+
+    await this.render();
+  }
+
+  #buildCheckoutRequest(lines) {
+    const actor = this.#actor;
+    return {
+      direction: "buy",
+      profileId: this.#profile.id,
+      itemActorUuid: actor.uuid,
+      currencyActorUuid: actor.uuid,
+      requestedByUserId: globalThis.game?.user?.id ?? "unknown-user",
+      lines: lines.map((line) => ({
+        product: structuredClone(line.product),
+        quantity: line.quantity
+      }))
+    };
+  }
+
   #cartChanged() {
     this.#checkoutState = null;
   }
@@ -365,13 +465,18 @@ export class MarketApplication extends HandlebarsApplicationMixin(ApplicationV2)
     return {
       ...state,
       valid: state.status === "valid",
-      invalid: state.status === "invalid",
+      invalid: state.status === "invalid" || state.status === "failed",
       error: state.status === "error",
+      running: state.status === "running",
+      completed: state.status === "completed",
+      rolledBack: state.status === "rolled-back",
+      rollbackFailed: state.status === "rollback-failed",
       totalLabel: this.#formatCopper(Math.max(0, state.total ?? 0)),
       balanceLabel: this.#formatCopper(Math.max(0, state.balance ?? 0)),
       remainingLabel: remaining !== null && remaining >= 0 ? this.#formatCopper(remaining) : null,
       deficitLabel: remaining !== null && remaining < 0 ? this.#formatCopper(Math.abs(remaining)) : null,
-      errorLabels
+      errorLabels,
+      warningLabels: (state.warnings ?? []).map((warning) => this.#transactionWarningLabel(warning))
     };
   }
 
@@ -482,6 +587,12 @@ export class MarketApplication extends HandlebarsApplicationMixin(ApplicationV2)
     const key = `PF2E_MARKET_FORGE.TransactionError.${error}`;
     const localized = game.i18n.localize(key);
     return localized === key ? String(error) : localized;
+  }
+
+  #transactionWarningLabel(warning) {
+    const key = `PF2E_MARKET_FORGE.TransactionWarning.${warning}`;
+    const localized = game.i18n.localize(key);
+    return localized === key ? String(warning) : localized;
   }
 
   #itemTypeLabel(type) {

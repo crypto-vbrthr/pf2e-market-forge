@@ -1,4 +1,4 @@
-import { coinsToCopper } from "../core/money.js";
+import { coinsToCopper, copperToCoins } from "../core/money.js";
 
 export class CurrencyAdapter {
   #actorProvider;
@@ -8,20 +8,42 @@ export class CurrencyAdapter {
   }
 
   async getBalance(actorUuid) {
-    const actor = await this.#actorProvider(actorUuid);
-    if (!actor) throw new RangeError(`Actor not found: ${actorUuid}`);
+    const actor = await this.#requireActor(actorUuid);
     return actorCurrencyToCopper(actor);
   }
 
   async canAfford(actorUuid, amount) {
-    if (!Number.isSafeInteger(amount) || amount < 0) {
-      throw new TypeError("Amount must be a non-negative safe integer.");
-    }
+    assertAmount(amount);
     return (await this.getBalance(actorUuid)) >= amount;
   }
 
-  async remove() { return notImplemented("remove"); }
-  async add() { return notImplemented("add"); }
+  async remove(actorUuid, amount) {
+    assertAmount(amount);
+    if (amount === 0) return true;
+    const actor = await this.#requireActor(actorUuid);
+    const removeCurrency = actor?.inventory?.removeCurrency ?? actor?.inventory?.removeCoins;
+    if (typeof removeCurrency !== "function") {
+      throw new Error("PF2E Market Forge: Actor inventory does not expose removeCurrency().");
+    }
+    return Boolean(await removeCurrency.call(actor.inventory, copperToCoins(amount), { byValue: true }));
+  }
+
+  async add(actorUuid, amount) {
+    assertAmount(amount);
+    if (amount === 0) return;
+    const actor = await this.#requireActor(actorUuid);
+    const addCurrency = actor?.inventory?.addCurrency ?? actor?.inventory?.addCoins;
+    if (typeof addCurrency !== "function") {
+      throw new Error("PF2E Market Forge: Actor inventory does not expose addCurrency().");
+    }
+    await addCurrency.call(actor.inventory, copperToCoins(amount), { combineStacks: true });
+  }
+
+  async #requireActor(actorUuid) {
+    const actor = await this.#actorProvider(actorUuid);
+    if (!actor) throw new RangeError(`Actor not found: ${actorUuid}`);
+    return actor;
+  }
 }
 
 export function actorCurrencyToCopper(actor) {
@@ -57,6 +79,8 @@ function safeCoin(value) {
   return Number.isSafeInteger(number) && number >= 0 ? number : 0;
 }
 
-function notImplemented(method) {
-  throw new Error(`PF2E Market Forge: CurrencyAdapter.${method} is not implemented.`);
+function assertAmount(amount) {
+  if (!Number.isSafeInteger(amount) || amount < 0) {
+    throw new TypeError("Amount must be a non-negative safe integer.");
+  }
 }

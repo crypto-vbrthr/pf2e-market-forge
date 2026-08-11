@@ -20,10 +20,10 @@ export class MarketForgeAPI {
   }
 
   async quotePurchase() {
-    throw new Error("PF2E Market Forge Milestone 1: public purchase quoting is not wired to Foundry yet.");
+    throw new Error("PF2E Market Forge: public purchase quoting is not exposed yet.");
   }
 
   async quoteSale() {
-    throw new Error("PF2E Market Forge Milestone 1: public sale quoting is not wired to Foundry yet.");
+    throw new Error("PF2E Market Forge: public sale quoting is not exposed yet.");
   }
 }

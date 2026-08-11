@@ -116,6 +116,20 @@ describe("CatalogService contract", () => {
     assert.equal(calls.count, 1);
   });
 
+  it("can bypass the cached index for authoritative checkout revalidation", async () => {
+    const calls = { count: 0 };
+    const pack = makePack("world.fresh", [row({ id: "item", name: "Fresh Item", price: { gp: 1 } })], calls);
+    const service = new CatalogService({ packProvider: () => new Map([[pack.collection, pack]]) });
+    const profile = createDefaultMarketProfile({ sources: { itemCompendia: [pack.collection] } });
+    const uuid = `Compendium.${pack.collection}.Item.item`;
+
+    await service.getEntry(uuid, { profile, maximumItemLevel: 5 });
+    await service.getEntry(uuid, { profile, maximumItemLevel: 5 });
+    assert.equal(calls.count, 1);
+    await service.getEntry(uuid, { profile, maximumItemLevel: 5, fresh: true });
+    assert.equal(calls.count, 2);
+  });
+
   it("reports missing configured compendia without crashing the market", async () => {
     const service = new CatalogService({ packProvider: () => new Map() });
     const profile = createDefaultMarketProfile({ sources: { itemCompendia: ["world.missing"] } });

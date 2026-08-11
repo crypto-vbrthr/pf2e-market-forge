@@ -1,3 +1,3 @@
 # Templates
 
-Milestone 1 introduces `market.hbs`, the first read-only Market Forge ApplicationV2 surface. Later milestones will add reusable partials for expandable item rows, previews, cart lines, and the spell-item builder.
+`market.hbs` is the current ApplicationV2 Market Forge surface. Milestone 4 activates the real purchase checkout while keeping the spell-item and sell panels staged for later milestones. Reusable partial extraction remains a later UI-hardening step once those panels are active.
