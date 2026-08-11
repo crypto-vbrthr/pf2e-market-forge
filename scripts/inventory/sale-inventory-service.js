@@ -63,7 +63,9 @@ export function mapOwnedItem(item, { actorUuid = null } = {}) {
   if (isCurrencyItem(item, treasureCategory)) reasons.push("currency");
   if (item.isTemporary === true || item.system?.temporary === true || traits.includes("infused")) reasons.push("temporary");
   if (isExplicitlyUnidentified(item)) reasons.push("unidentified");
-  if (item.isEquipped === true) reasons.push("equipped");
+  // PF2e may expose treasure items as carried/equipped. That state is not a meaningful
+  // sale restriction for treasure (gems, art objects, materials, etc.).
+  if (itemType !== "treasure" && item.isEquipped === true) reasons.push("equipped");
   if (item.isInvested === true) reasons.push("invested");
   if (item.isInContainer === true || Boolean(item.system?.containerId)) reasons.push("in-container");
   if (hasSubitems(item)) reasons.push("has-subitems");

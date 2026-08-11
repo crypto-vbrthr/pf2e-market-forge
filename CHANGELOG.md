@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.0.7 - Milestone 5 Hotfix
+
+- Fixed treasure items such as gems being blocked from sale when PF2e reports them as carried/equipped.
+- The equipped-state sale protection now applies only to non-treasure physical items.
+- Added a regression test for carried/equipped treasure sale eligibility.
+
 ## 0.0.6 - Milestone 5
 
 - Added real sale checkout for character and Party inventories.

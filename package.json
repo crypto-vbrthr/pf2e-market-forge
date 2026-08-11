@@ -1,9 +1,9 @@
 {
   "name": "pf2e-market-forge",
-  "version": "0.0.6",
+  "version": "0.0.7",
   "private": true,
   "type": "module",
-  "description": "Contract-tested PF2E Market Forge with Milestone 5 real purchase and sale execution with rollback safety",
+  "description": "Contract-tested PF2E Market Forge with Milestone 5 real purchase/sale execution and treasure sale hotfix",
   "scripts": {
     "test": "node --test tests/*.test.js"
   }

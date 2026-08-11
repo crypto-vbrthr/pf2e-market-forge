@@ -65,6 +65,20 @@ describe("Sale inventory contract", () => {
     assert.equal(entry.availability.available, true);
   });
 
+  it("does not block treasure merely because PF2e reports it as equipped/carried", () => {
+    const gem = item({
+      uuid: "Actor.pc.Item.gem-carried",
+      id: "gem-carried",
+      type: "treasure",
+      isEquipped: true,
+      system: { ...item().system, category: "gem" }
+    });
+    const entry = mapOwnedItem(gem);
+    assert.equal(entry.treasureCategory, "gem");
+    assert.equal(entry.availability.available, true);
+    assert.equal(entry.availability.reasons.includes("equipped"), false);
+  });
+
   it("blocks currency, temporary, unidentified, equipped, invested, contained, subitem-bearing, and valueless items", () => {
     const cases = [
       ["currency", item({ type: "treasure", isCurrency: true, system: { ...item().system, category: "coin" } })],
