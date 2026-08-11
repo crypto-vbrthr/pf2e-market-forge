@@ -1,8 +1,8 @@
 {
   "id": "pf2e-market-forge",
   "title": "PF2E Market Forge",
-  "description": "Rules-aware PF2e market workflow. Milestone 5 hotfix: treasure sale handling no longer treats PF2e carried/equipped state as a sale blocker.",
-  "version": "0.0.7",
+  "description": "Rules-aware PF2e market workflow. Milestone 6 adds configurable scroll and ordinary wand purchases from approved spell compendia.",
+  "version": "0.0.8",
   "authors": [
     {
       "name": "Bully"

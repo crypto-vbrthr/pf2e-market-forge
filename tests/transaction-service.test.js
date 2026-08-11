@@ -82,6 +82,53 @@ describe("Milestone 4 transaction execution", () => {
     assert.equal(receipts[0].plan.transactionId, "tx-buy");
   });
 
+  it("uses a generated purchase source for scrolls and wands instead of resolving a compendium item UUID", async () => {
+    let balance = 10000;
+    const generatedSource = { type: "consumable", name: "Scroll of Heal", system: { quantity: 1, spell: { name: "Heal" } } };
+    const calls = [];
+    const spellRequest = {
+      direction: "buy",
+      profileId: "default",
+      itemActorUuid: "Actor.pc",
+      currencyActorUuid: "Actor.pc",
+      requestedByUserId: "User.player",
+      lines: [{ quantity: 2, product: { kind: "scroll", spellUuid: "Compendium.spells.heal", spellRank: 3 } }]
+    };
+    const service = new TransactionService({
+      profileProvider: async () => profile,
+      productResolver: async () => ({
+        uuid: "spell-product:scroll:heal:3",
+        name: "Scroll of Heal",
+        baseUnitPrice: 3000,
+        availability: { available: true, reasons: [] },
+        purchaseSource: generatedSource
+      }),
+      balanceProvider: async () => balance,
+      currencyAdapter: {
+        async remove(_uuid, amount) { balance -= amount; return true; },
+        async add(_uuid, amount) { balance += amount; }
+      },
+      inventoryAdapter: {
+        async addSource(actorUuid, source, quantity, options) { calls.push([actorUuid, source, quantity, options]); return { type: "create", actorUuid, itemId: "scroll" }; },
+        async addFromUuid() { throw new Error("generated spell items must not use addFromUuid"); },
+        async rollbackMutation() {},
+        async refresh() {}
+      },
+      receiptService: { async createPurchaseReceipt() {} },
+      permissionProvider: async () => true,
+      lock: new TransactionLock()
+    });
+
+    const result = await service.checkout(spellRequest);
+    assert.equal(result.status, "completed");
+    assert.equal(result.total, 6000);
+    assert.equal(balance, 4000);
+    assert.equal(calls.length, 1);
+    assert.deepEqual(calls[0][1], generatedSource);
+    assert.equal(calls[0][2], 2);
+    assert.equal(calls[0][3].sourceUuid, "spell-product:scroll:heal:3");
+  });
+
   it("rolls back prior item additions and refunds currency after an item failure", async () => {
     let balance = 5000;
     const rolledBack = [];

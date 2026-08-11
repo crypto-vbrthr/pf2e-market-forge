@@ -1,5 +1,20 @@
 # Changelog
 
+## 0.0.8 - Milestone 6
+
+- Added a spell catalog backed by configured PF2e spell compendia.
+- Excluded cantrips, focus spells, and rituals from scroll/wand generation.
+- Added spell search and filters for base rank, tradition, rarity, and compendium.
+- Added scroll and ordinary wand configuration with selectable cast rank.
+- Added rules-derived spell-item levels and prices for every supported rank.
+- Added heightened spell previews using PF2e spell variants and roll data.
+- Added generated scroll/wand cart products, including separate lines per spell, type, and rank.
+- Added PF2e spell-item source generation using the system's current base-item templates and embedded-spell data shape.
+- Added authoritative checkout regeneration of the selected spell item immediately before purchase.
+- Added generated-source insertion through the same stack-aware inventory/rollback path as ordinary purchases.
+- Rank 10 spells are limited to scrolls because ordinary rank 10 wands are not supported.
+- Added M6 catalog, preview, adapter, generated-source transaction, view-state, and template contract tests.
+
 ## 0.0.7 - Milestone 5 Hotfix
 
 - Fixed treasure items such as gems being blocked from sale when PF2e reports them as carried/equipped.

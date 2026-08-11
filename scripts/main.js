@@ -6,7 +6,7 @@ import { registerPartySheetIntegration } from "./integrations/party-sheet.js";
 import { registerSettings } from "./settings/register-settings.js";
 
 Hooks.once("init", () => {
-  console.log(`${MODULE_ID} | initializing Milestone 5`);
+  console.log(`${MODULE_ID} | initializing Milestone 6`);
 
   registerSettings();
   registerCharacterSheetIntegration();
@@ -23,5 +23,5 @@ Hooks.once("ready", () => {
     return;
   }
 
-  console.log(`${MODULE_ID} | Milestone 5 ready`);
+  console.log(`${MODULE_ID} | Milestone 6 ready`);
 });

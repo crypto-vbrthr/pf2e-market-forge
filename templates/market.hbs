@@ -124,10 +124,118 @@
 
     {{#if spellItemsTab.active}}
       <section class="market-forge-panel market-forge-spell-builder">
-        <div class="market-forge-toolbar"><label class="market-forge-search"><i class="fa-solid fa-wand-magic-sparkles"></i><input type="search" disabled placeholder="{{localize "PF2E_MARKET_FORGE.Spells.SearchPlaceholder"}}" /></label></div>
-        <div class="market-forge-two-column">
-          <div class="market-forge-empty-state compact"><i class="fa-solid fa-book-open"></i><h3>{{localize "PF2E_MARKET_FORGE.Spells.EmptyTitle"}}</h3><p>{{localize "PF2E_MARKET_FORGE.Spells.EmptyText"}}</p></div>
-          <div class="market-forge-config-card disabled-card"><h3>{{localize "PF2E_MARKET_FORGE.Spells.ConfigTitle"}}</h3><label>{{localize "PF2E_MARKET_FORGE.Spells.Type"}} <select disabled><option>{{localize "PF2E_MARKET_FORGE.Spells.Scroll"}}</option></select></label><label>{{localize "PF2E_MARKET_FORGE.Spells.Rank"}} <select disabled><option>1</option></select></label><div class="market-forge-price-preview"><span>{{localize "PF2E_MARKET_FORGE.ItemLevel"}}: —</span><strong>{{localize "PF2E_MARKET_FORGE.Price"}}: —</strong></div><button type="button" disabled>{{localize "PF2E_MARKET_FORGE.AddToCart"}}</button></div>
+        <div class="market-forge-toolbar market-forge-spell-toolbar">
+          <label class="market-forge-search">
+            <i class="fa-solid fa-wand-magic-sparkles"></i>
+            <input type="search" value="{{spellFilters.search}}" data-spell-filter="search" placeholder="{{localize "PF2E_MARKET_FORGE.Spells.SearchPlaceholder"}}" />
+          </label>
+          <select data-spell-filter="baseRank" aria-label="{{localize "PF2E_MARKET_FORGE.Spells.BaseRank"}}">
+            <option value="all">{{localize "PF2E_MARKET_FORGE.Spells.AllRanks"}}</option>
+            {{#each spellOptions.ranks}}<option value="{{value}}" {{#if selected}}selected{{/if}}>{{label}}</option>{{/each}}
+          </select>
+          <select data-spell-filter="tradition" aria-label="{{localize "PF2E_MARKET_FORGE.Spells.Tradition"}}">
+            <option value="all">{{localize "PF2E_MARKET_FORGE.Spells.AllTraditions"}}</option>
+            {{#each spellOptions.traditions}}<option value="{{value}}" {{#if selected}}selected{{/if}}>{{label}}</option>{{/each}}
+          </select>
+          <select data-spell-filter="rarity" aria-label="{{localize "PF2E_MARKET_FORGE.Buy.Rarity"}}">
+            <option value="all">{{localize "PF2E_MARKET_FORGE.Buy.AllRarities"}}</option>
+            {{#each spellOptions.rarities}}<option value="{{value}}" {{#if selected}}selected{{/if}}>{{label}}</option>{{/each}}
+          </select>
+          <select data-spell-filter="sourcePack" aria-label="{{localize "PF2E_MARKET_FORGE.Buy.Compendium"}}">
+            <option value="all">{{localize "PF2E_MARKET_FORGE.Buy.AllCompendia"}}</option>
+            {{#each spellOptions.sources}}<option value="{{id}}" {{#if selected}}selected{{/if}}>{{label}}</option>{{/each}}
+          </select>
+        </div>
+
+        <div class="market-forge-catalog-summary">
+          <span><i class="fa-solid fa-book"></i> {{spellCatalog.resultLabel}}</span>
+          <span><i class="fa-solid fa-gauge-high"></i> {{localize "PF2E_MARKET_FORGE.MaximumItemLevel"}}: {{profile.maximumItemLevelLabel}}</span>
+        </div>
+
+        {{#each spellCatalog.sourceWarnings}}
+          <div class="market-forge-warning"><i class="fa-solid fa-triangle-exclamation"></i> {{label}}: {{error}}</div>
+        {{/each}}
+
+        <div class="market-forge-spell-layout">
+          <div class="market-forge-spell-list">
+            {{#if spellCatalog.hasEntries}}
+              {{#each spellCatalog.entries}}
+                <button type="button" class="market-forge-spell-row {{#if selected}}selected{{/if}} {{#unless availability.available}}unavailable{{/unless}}" data-spell-select="{{uuid}}">
+                  <img src="{{img}}" alt="{{name}}" />
+                  <span class="market-forge-spell-identity">
+                    <strong>{{name}}</strong>
+                    <small>{{localize "PF2E_MARKET_FORGE.Spells.BaseRank"}} {{baseRank}} · {{traditionsText}}</small>
+                    <small>{{rarityLabel}} · {{sourceLabel}}</small>
+                  </span>
+                  <span class="market-forge-spell-rank">{{baseRank}}</span>
+                </button>
+              {{/each}}
+            {{else}}
+              <div class="market-forge-empty-state compact"><i class="fa-solid fa-book-open"></i><h3>{{localize "PF2E_MARKET_FORGE.Spells.EmptyTitle"}}</h3><p>{{localize "PF2E_MARKET_FORGE.Spells.EmptyText"}}</p></div>
+            {{/if}}
+          </div>
+
+          <aside class="market-forge-config-card market-forge-spell-config">
+            {{#if spellBuilder}}
+              <div class="market-forge-spell-selected">
+                <img src="{{spellBuilder.spell.img}}" alt="{{spellBuilder.spell.name}}" />
+                <div>
+                  <h3>{{spellBuilder.spell.name}}</h3>
+                  <small>{{localize "PF2E_MARKET_FORGE.Spells.BaseRank"}} {{spellBuilder.spell.baseRank}} · {{spellBuilder.spell.traditionsText}}</small>
+                  <small>{{spellBuilder.spell.rarityLabel}} · {{spellBuilder.spell.sourceLabel}}</small>
+                </div>
+              </div>
+
+              <label>{{localize "PF2E_MARKET_FORGE.Spells.Type"}}
+                <select data-spell-kind>
+                  {{#each spellBuilder.kindOptions}}<option value="{{value}}" {{#if selected}}selected{{/if}} {{#if disabled}}disabled{{/if}}>{{label}}</option>{{/each}}
+                </select>
+              </label>
+              <label>{{localize "PF2E_MARKET_FORGE.Spells.Rank"}}
+                <select data-spell-rank>
+                  {{#each spellBuilder.rankOptions}}<option value="{{value}}" {{#if selected}}selected{{/if}} {{#if disabled}}disabled{{/if}}>{{label}}</option>{{/each}}
+                </select>
+              </label>
+              <label>{{localize "PF2E_MARKET_FORGE.Quantity"}}
+                <input type="number" min="1" max="999" step="1" value="{{spellBuilder.quantity}}" data-spell-quantity />
+              </label>
+
+              <div class="market-forge-spell-product-name"><strong>{{spellBuilder.productName}}</strong></div>
+              <div class="market-forge-price-preview market-forge-spell-price-preview">
+                <span>{{localize "PF2E_MARKET_FORGE.ItemLevel"}}: <strong>{{spellBuilder.itemLevel}}</strong></span>
+                <span>{{localize "PF2E_MARKET_FORGE.Price"}}: <strong>{{spellBuilder.priceLabel}}</strong></span>
+                <span>{{localize "PF2E_MARKET_FORGE.Cart.Total"}}: <strong>{{spellBuilder.totalPriceLabel}}</strong></span>
+              </div>
+
+              {{#unless spellBuilder.available}}
+                <div class="market-forge-warning"><i class="fa-solid fa-lock"></i> {{spellBuilder.availabilityReasonText}}</div>
+              {{/unless}}
+
+              <div class="market-forge-spell-description">
+                {{#if spellBuilder.preview}}
+                  {{#if spellBuilder.preview.traitLabels.length}}<div class="market-forge-traits">{{#each spellBuilder.preview.traitLabels}}<span>{{this}}</span>{{/each}}</div>{{/if}}
+                  <div class="market-forge-preview-meta">
+                    <span><b>{{localize "PF2E_MARKET_FORGE.Spells.SelectedRank"}}:</b> {{spellBuilder.castRank}}</span>
+                    {{#if spellBuilder.preview.traditionLabels.length}}<span><b>{{localize "PF2E_MARKET_FORGE.Spells.Tradition"}}:</b> {{#each spellBuilder.preview.traditionLabels}}{{#unless @first}}, {{/unless}}{{this}}{{/each}}</span>{{/if}}
+                  </div>
+                  <div class="market-forge-description">{{{spellBuilder.preview.renderedDescription}}}</div>
+                  <div class="market-forge-preview-actions"><button type="button" data-spell-open="{{spellBuilder.spell.uuid}}"><i class="fa-solid fa-up-right-from-square"></i>{{localize "PF2E_MARKET_FORGE.Spells.OpenSpell"}}</button></div>
+                {{else}}
+                  {{#if spellBuilder.previewError}}
+                    <div class="market-forge-warning"><i class="fa-solid fa-triangle-exclamation"></i> {{spellBuilder.previewError}}</div>
+                  {{else}}
+                    <div class="market-forge-preview-loading"><i class="fa-solid fa-spinner fa-spin"></i> {{localize "PF2E_MARKET_FORGE.Spells.LoadingPreview"}}</div>
+                  {{/if}}
+                {{/if}}
+              </div>
+
+              <button type="button" class="market-forge-cart-button" data-spell-add-cart {{#unless spellBuilder.available}}disabled{{/unless}}>
+                <i class="fa-solid fa-cart-plus"></i>{{localize "PF2E_MARKET_FORGE.AddToCart"}}
+              </button>
+            {{else}}
+              <div class="market-forge-empty-state compact"><i class="fa-solid fa-wand-magic-sparkles"></i><h3>{{localize "PF2E_MARKET_FORGE.Spells.ConfigTitle"}}</h3><p>{{localize "PF2E_MARKET_FORGE.Spells.SelectHint"}}</p></div>
+            {{/if}}
+          </aside>
         </div>
       </section>
     {{/if}}
@@ -218,7 +326,11 @@
               {{#each cart.lines}}
                 <article class="market-forge-cart-line">
                   <div class="market-forge-cart-line-main">
-                    <button type="button" class="market-forge-expand-button" data-market-expand-item="{{previewUuid}}"><i class="fa-solid {{#if expanded}}fa-chevron-down{{else}}fa-chevron-right{{/if}}"></i></button>
+                    {{#if isSpell}}
+                      <button type="button" class="market-forge-expand-button" data-market-expand-spell="{{product.spellUuid}}" data-spell-rank="{{product.spellRank}}"><i class="fa-solid {{#if expanded}}fa-chevron-down{{else}}fa-chevron-right{{/if}}"></i></button>
+                    {{else}}
+                      <button type="button" class="market-forge-expand-button" data-market-expand-item="{{previewUuid}}"><i class="fa-solid {{#if expanded}}fa-chevron-down{{else}}fa-chevron-right{{/if}}"></i></button>
+                    {{/if}}
                     <img src="{{product.img}}" alt="{{product.name}}" class="market-forge-item-image" />
                     <div class="market-forge-item-identity"><strong>{{product.name}}</strong><small>{{localize "PF2E_MARKET_FORGE.ItemLevel"}} {{product.level}} · {{unitPriceLabel}} {{localize "PF2E_MARKET_FORGE.Cart.PerItem"}}</small></div>
                     <div class="market-forge-quantity-stepper">
@@ -234,7 +346,13 @@
                       {{#if preview}}
                         {{#if preview.traitLabels.length}}<div class="market-forge-traits">{{#each preview.traitLabels}}<span>{{this}}</span>{{/each}}</div>{{/if}}
                         <div class="market-forge-description">{{{preview.renderedDescription}}}</div>
-                        <div class="market-forge-preview-actions"><button type="button" data-market-open-item="{{previewUuid}}"><i class="fa-solid fa-up-right-from-square"></i>{{localize "PF2E_MARKET_FORGE.Buy.OpenItemSheet"}}</button></div>
+                        <div class="market-forge-preview-actions">
+                          {{#if isSpell}}
+                            <button type="button" data-market-open-spell="{{product.spellUuid}}"><i class="fa-solid fa-up-right-from-square"></i>{{localize "PF2E_MARKET_FORGE.Spells.OpenSpell"}}</button>
+                          {{else}}
+                            <button type="button" data-market-open-item="{{previewUuid}}"><i class="fa-solid fa-up-right-from-square"></i>{{localize "PF2E_MARKET_FORGE.Buy.OpenItemSheet"}}</button>
+                          {{/if}}
+                        </div>
                       {{else}}
                         {{#if previewError}}
                           <div class="market-forge-warning"><i class="fa-solid fa-triangle-exclamation"></i> {{previewError}}</div>
@@ -315,5 +433,5 @@
     {{/if}}
   </main>
 
-  <footer class="market-forge-footer-note"><i class="fa-solid fa-shield-halved"></i> {{localize "PF2E_MARKET_FORGE.Milestone5Footer"}}</footer>
+  <footer class="market-forge-footer-note"><i class="fa-solid fa-shield-halved"></i> {{localize "PF2E_MARKET_FORGE.Milestone6Footer"}}</footer>
 </div>

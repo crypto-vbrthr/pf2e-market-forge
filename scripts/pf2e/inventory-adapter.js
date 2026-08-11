@@ -22,13 +22,19 @@ export class InventoryAdapter {
    */
   async addFromUuid(actorUuid, sourceUuid, quantity = 1) {
     assertQuantity(quantity);
-    const actor = await this.#requireActor(actorUuid);
     const item = await this.#itemProvider(sourceUuid);
     if (!item) throw new RangeError(`Item not found: ${sourceUuid}`);
-
     const source = itemSource(item);
+    return this.addSource(actorUuid, source, quantity, { sourceUuid });
+  }
+
+  /** Add an already-authoritatively generated physical item source (for example a scroll or wand). */
+  async addSource(actorUuid, sourceData, quantity = 1, { sourceUuid = null } = {}) {
+    assertQuantity(quantity);
+    const actor = await this.#requireActor(actorUuid);
+    const source = structuredClone(sourceData);
     if (!source || typeof source !== "object" || !isPhysicalSource(source)) {
-      throw new TypeError(`Item is not a supported physical PF2e item: ${sourceUuid}`);
+      throw new TypeError("Item source is not a supported physical PF2e item.");
     }
 
     source.system ??= {};
@@ -44,27 +50,14 @@ export class InventoryAdapter {
       ? inventory.findStackableItem(source)
       : null;
     const previousQuantity = existing ? Number(existing.quantity ?? existing.system?.quantity ?? 0) : null;
-
     const result = await inventory.add(source, { stack: true, render: false });
     const resultItem = Array.isArray(result) ? result[0] : null;
-    if (!resultItem?.id) throw new Error(`PF2E Market Forge: PF2e did not return an added item for ${sourceUuid}.`);
+    if (!resultItem?.id) throw new Error("PF2E Market Forge: PF2e did not return an added item.");
 
+    const identity = sourceUuid ?? `generated:${source.type}:${source.name ?? resultItem.id}`;
     return existing
-      ? {
-          type: "stack-update",
-          actorUuid,
-          itemId: resultItem.id,
-          sourceUuid,
-          addedQuantity: quantity,
-          previousQuantity
-        }
-      : {
-          type: "create",
-          actorUuid,
-          itemId: resultItem.id,
-          sourceUuid,
-          addedQuantity: quantity
-        };
+      ? { type: "stack-update", actorUuid, itemId: resultItem.id, sourceUuid: identity, addedQuantity: quantity, previousQuantity }
+      : { type: "create", actorUuid, itemId: resultItem.id, sourceUuid: identity, addedQuantity: quantity };
   }
 
 

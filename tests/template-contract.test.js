@@ -4,7 +4,7 @@ import { describe, it } from "node:test";
 
 const template = fs.readFileSync(new URL("../templates/market.hbs", import.meta.url), "utf8");
 
-describe("Milestone 5 template contract", () => {
+describe("Milestone 6 template contract", () => {
   it("keeps catalog filters and expandable item previews", () => {
     for (const filter of ["search", "category", "level", "rarity", "sourcePack"]) {
       assert.match(template, new RegExp(`data-catalog-filter=["']${filter}["']`));
@@ -29,4 +29,18 @@ describe("Milestone 5 template contract", () => {
     assert.match(template, /PF2E_MARKET_FORGE\.Sell\.CompleteSale/);
     assert.match(template, /PF2E_MARKET_FORGE\.Sell\.FullValueRule/);
   });
+  it("offers a live spell catalog, rank/type configurator, and spell-product cart previews", () => {
+    for (const filter of ["search", "baseRank", "tradition", "rarity", "sourcePack"]) {
+      assert.match(template, new RegExp(`data-spell-filter=["']${filter}["']`));
+    }
+    assert.match(template, /data-spell-select=/);
+    assert.match(template, /data-spell-kind/);
+    assert.match(template, /data-spell-rank/);
+    assert.match(template, /data-spell-quantity/);
+    assert.match(template, /data-spell-add-cart/);
+    assert.match(template, /data-market-expand-spell=/);
+    assert.match(template, /data-market-open-spell=/);
+    assert.match(template, /PF2E_MARKET_FORGE\.Milestone6Footer/);
+  });
+
 });

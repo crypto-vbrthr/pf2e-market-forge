@@ -1,17 +1,23 @@
 import { CartService } from "../cart/cart-service.js";
 import { CatalogService } from "../catalog/catalog-service.js";
 import { ItemPreviewService } from "../catalog/preview-service.js";
+import { SpellCatalogService } from "../catalog/spell-catalog-service.js";
+import { SpellPreviewService } from "../catalog/spell-preview-service.js";
 import { MODULE_ID } from "../core/constants.js";
 import { SaleInventoryService } from "../inventory/sale-inventory-service.js";
+import { evaluateAvailability } from "../market/availability-service.js";
 import { resolveMarketMaximumForActor } from "../market/market-level-context.js";
 import { createDefaultMarketProfile } from "../market/profile-defaults.js";
 import { CurrencyAdapter } from "../pf2e/currency-adapter.js";
 import { InventoryAdapter } from "../pf2e/inventory-adapter.js";
+import { SpellItemAdapter } from "../pf2e/spell-item-adapter.js";
 import { ReceiptService } from "../receipts/receipt-service.js";
 import { PriceService } from "../pricing/price-service.js";
+import { SpellItemService } from "../spells/spell-item-service.js";
 import { TransactionService } from "../transactions/transaction-service.js";
 import { createCatalogViewState, toggleExpandedUuid, updateCatalogViewState } from "./catalog-view-state.js";
 import { buildTabState, initialTabFromMode, normalizeMarketTab } from "./market-window-state.js";
+import { createSpellViewState, updateSpellViewState } from "./spell-view-state.js";
 
 const { ApplicationV2, HandlebarsApplicationMixin } = foundry.applications.api;
 
@@ -42,6 +48,10 @@ export class MarketApplication extends HandlebarsApplicationMixin(ApplicationV2)
   #profile;
   #catalogService;
   #previewService;
+  #spellCatalogService;
+  #spellPreviewService;
+  #spellItemService;
+  #spellItemAdapter;
   #cartService;
   #priceService;
   #currencyAdapter;
@@ -50,9 +60,13 @@ export class MarketApplication extends HandlebarsApplicationMixin(ApplicationV2)
   #receiptService;
   #transactionService;
   #catalogFilters = createCatalogViewState();
+  #spellView = createSpellViewState();
   #expandedItems = new Set();
   #previews = new Map();
   #previewErrors = new Map();
+  #expandedSpells = new Set();
+  #spellPreviews = new Map();
+  #spellPreviewErrors = new Map();
   #checkoutState = null;
   #checkoutBusy = false;
   #searchTimer = null;
@@ -63,6 +77,10 @@ export class MarketApplication extends HandlebarsApplicationMixin(ApplicationV2)
     profile = null,
     catalogService = null,
     previewService = null,
+    spellCatalogService = null,
+    spellPreviewService = null,
+    spellItemService = null,
+    spellItemAdapter = null,
     cartService = null,
     priceService = null,
     currencyAdapter = null,
@@ -78,6 +96,10 @@ export class MarketApplication extends HandlebarsApplicationMixin(ApplicationV2)
     this.#profile = profile ?? createDefaultMarketProfile();
     this.#catalogService = catalogService ?? new CatalogService();
     this.#previewService = previewService ?? new ItemPreviewService();
+    this.#spellCatalogService = spellCatalogService ?? new SpellCatalogService();
+    this.#spellPreviewService = spellPreviewService ?? new SpellPreviewService();
+    this.#spellItemService = spellItemService ?? new SpellItemService();
+    this.#spellItemAdapter = spellItemAdapter ?? new SpellItemAdapter();
     this.#cartService = cartService ?? new CartService();
     this.#priceService = priceService ?? new PriceService();
     const actorProvider = async (uuid) => {
@@ -92,11 +114,31 @@ export class MarketApplication extends HandlebarsApplicationMixin(ApplicationV2)
     this.#transactionService = transactionService ?? new TransactionService({
       profileProvider: async (profileId) => profileId === this.#profile.id ? this.#profile : null,
       productResolver: async (product, { profile, maximumItemLevel, authoritative, direction, itemActorUuid }) => {
-        if (product.kind !== "item") return null;
-        if (direction === "sell" || product.inventoryItemUuid) {
-          return this.#saleInventoryService.getEntry(itemActorUuid, product.inventoryItemUuid);
+        if (product.kind === "item") {
+          if (direction === "sell" || product.inventoryItemUuid) {
+            return this.#saleInventoryService.getEntry(itemActorUuid, product.inventoryItemUuid);
+          }
+          return this.#catalogService.getEntry(product.sourceUuid, { profile, maximumItemLevel, fresh: authoritative });
         }
-        return this.#catalogService.getEntry(product.sourceUuid, { profile, maximumItemLevel, fresh: authoritative });
+
+        if (direction !== "buy" || !["scroll", "wand"].includes(product.kind)) return null;
+        const spellEntry = await this.#spellCatalogService.getEntry(product.spellUuid, { profile, fresh: authoritative });
+        if (!spellEntry) return null;
+        const spell = await this.#spellCatalogService.getSpell(product.spellUuid);
+        if (!spell) return null;
+        const draft = this.#createSpellDraft(spellEntry, product.kind, product.spellRank, maximumItemLevel);
+        const purchaseSource = await this.#spellItemAdapter.createSource(draft, { spell });
+        return {
+          uuid: `spell-product:${product.kind}:${product.spellUuid}:${product.spellRank}`,
+          name: purchaseSource.name,
+          img: purchaseSource.img ?? spellEntry.img,
+          level: draft.itemLevel,
+          rarity: spellEntry.rarity,
+          sourcePack: spellEntry.sourcePack,
+          baseUnitPrice: draft.baseUnitPrice,
+          availability: draft.availability,
+          purchaseSource
+        };
       },
       priceService: this.#priceService,
       balanceProvider: async (actorUuid) => this.#currencyAdapter.getBalance(actorUuid),
@@ -139,6 +181,18 @@ export class MarketApplication extends HandlebarsApplicationMixin(ApplicationV2)
     }
 
     const preparedEntries = catalog.entries.map((entry) => this.#prepareCatalogEntry(entry));
+
+    let spellCatalog = emptySpellCatalogResult();
+    let spellBuilder = null;
+    if (tabs["spell-items"].active) {
+      spellCatalog = await this.#spellCatalogService.search({
+        profile: this.#profile,
+        filters: this.#spellView,
+        limit: 150
+      });
+      spellBuilder = await this.#prepareSpellBuilder(spellCatalog, maximumItemLevel);
+    }
+
     const cartState = this.#cartService.getState();
     const activeDirection = cartState.activeDirection;
     let saleInventoryEntries = [];
@@ -184,7 +238,7 @@ export class MarketApplication extends HandlebarsApplicationMixin(ApplicationV2)
       sellTab: tabs.sell,
       cartTab: tabs.cart,
       inventoryCount: this.#physicalItemCount(actor),
-      milestone: "5",
+      milestone: "6",
       readOnlyMilestone: false,
       catalog: {
         ...catalog,
@@ -195,6 +249,16 @@ export class MarketApplication extends HandlebarsApplicationMixin(ApplicationV2)
       },
       catalogFilters: this.#catalogFilters,
       catalogOptions: this.#catalogOptions(catalog.facets),
+      spellCatalog: {
+        ...spellCatalog,
+        entries: spellCatalog.entries.map((entry) => this.#prepareSpellEntry(entry)),
+        hasEntries: spellCatalog.entries.length > 0,
+        resultLabel: this.#spellResultLabel(spellCatalog.entries.length, spellCatalog.total, spellCatalog.truncated),
+        sourceWarnings: spellCatalog.sources.filter((source) => source.status !== "ready")
+      },
+      spellFilters: this.#spellView,
+      spellOptions: this.#spellOptions(spellCatalog.facets),
+      spellBuilder,
       saleInventory: {
         entries: preparedSaleEntries,
         hasEntries: preparedSaleEntries.length > 0,
@@ -237,7 +301,7 @@ export class MarketApplication extends HandlebarsApplicationMixin(ApplicationV2)
     for (const button of this.element.querySelectorAll("[data-market-tab]")) {
       button.addEventListener("click", () => {
         this.#activeTab = normalizeMarketTab(button.dataset.marketTab, this.#activeTab);
-        if (this.#activeTab === "buy") this.#cartService.setActiveDirection("buy");
+        if (["buy", "spell-items"].includes(this.#activeTab)) this.#cartService.setActiveDirection("buy");
         if (this.#activeTab === "sell") this.#cartService.setActiveDirection("sell");
         this.#checkoutState = null;
         this.render();
@@ -260,6 +324,69 @@ export class MarketApplication extends HandlebarsApplicationMixin(ApplicationV2)
         this.#catalogFilters = updateCatalogViewState(this.#catalogFilters, field, event.currentTarget.value);
         this.render();
       });
+    }
+
+    const spellSearch = this.element.querySelector("[data-spell-filter='search']");
+    spellSearch?.addEventListener("input", (event) => {
+      clearTimeout(this.#searchTimer);
+      const value = event.currentTarget.value;
+      this.#searchTimer = setTimeout(() => {
+        this.#spellView = updateSpellViewState(this.#spellView, "search", value);
+        this.render();
+      }, 220);
+    });
+
+    for (const select of this.element.querySelectorAll("select[data-spell-filter]")) {
+      select.addEventListener("change", (event) => {
+        const field = event.currentTarget.dataset.spellFilter;
+        this.#spellView = updateSpellViewState(this.#spellView, field, event.currentTarget.value);
+        this.render();
+      });
+    }
+
+    for (const button of this.element.querySelectorAll("[data-spell-select]")) {
+      button.addEventListener("click", () => {
+        this.#spellView = updateSpellViewState(this.#spellView, "selectedSpellUuid", button.dataset.spellSelect);
+        this.#spellView = updateSpellViewState(this.#spellView, "castRank", null);
+        this.render();
+      });
+    }
+
+    this.element.querySelector("[data-spell-kind]")?.addEventListener("change", (event) => {
+      this.#spellView = updateSpellViewState(this.#spellView, "kind", event.currentTarget.value);
+      this.#spellView = updateSpellViewState(this.#spellView, "castRank", null);
+      this.render();
+    });
+
+    this.element.querySelector("[data-spell-rank]")?.addEventListener("change", (event) => {
+      this.#spellView = updateSpellViewState(this.#spellView, "castRank", event.currentTarget.value);
+      this.render();
+    });
+
+    this.element.querySelector("[data-spell-quantity]")?.addEventListener("change", (event) => {
+      const quantity = Math.max(1, Math.min(999, Math.trunc(Number(event.currentTarget.value) || 1)));
+      this.#spellView = updateSpellViewState(this.#spellView, "quantity", quantity);
+      this.render();
+    });
+
+    this.element.querySelector("[data-spell-add-cart]")?.addEventListener("click", async () => this.#addSpellItem());
+    this.element.querySelector("[data-spell-open]")?.addEventListener("click", async (event) => {
+      try {
+        await this.#spellPreviewService.openSheet(event.currentTarget.dataset.spellOpen);
+      } catch (error) {
+        console.error(`${MODULE_ID} | Could not open spell sheet`, error);
+        ui.notifications?.error?.(game.i18n.localize("PF2E_MARKET_FORGE.Spells.OpenFailed"));
+      }
+    });
+
+    for (const button of this.element.querySelectorAll("[data-market-expand-spell]")) {
+      button.addEventListener("click", async () => {
+        await this.#toggleSpellPreview(button.dataset.marketExpandSpell, Number(button.dataset.spellRank));
+      });
+    }
+
+    for (const button of this.element.querySelectorAll("[data-market-open-spell]")) {
+      button.addEventListener("click", async () => this.#spellPreviewService.openSheet(button.dataset.marketOpenSpell));
     }
 
     for (const button of this.element.querySelectorAll("[data-market-expand-item]")) {
@@ -393,6 +520,41 @@ export class MarketApplication extends HandlebarsApplicationMixin(ApplicationV2)
     });
     this.#cartChanged();
     ui.notifications?.info?.(game.i18n.format("PF2E_MARKET_FORGE.Cart.Added", { quantity, name: entry.name }));
+    await this.render();
+  }
+
+  async #addSpellItem() {
+    const spellUuid = this.#spellView.selectedSpellUuid;
+    if (!spellUuid) return;
+    const maximumItemLevel = this.#resolveLevelContext().result?.maximumItemLevel ?? null;
+    const spellEntry = await this.#spellCatalogService.getEntry(spellUuid, { profile: this.#profile });
+    if (!spellEntry) return;
+    const kind = this.#normalizedSpellKind(spellEntry);
+    const castRank = this.#normalizedSpellRank(spellEntry, kind);
+    const draft = this.#createSpellDraft(spellEntry, kind, castRank, maximumItemLevel);
+    if (!draft.availability.available) {
+      ui.notifications?.warn?.(game.i18n.localize("PF2E_MARKET_FORGE.Spells.Unavailable"));
+      return;
+    }
+    const quantity = Math.max(1, Math.min(999, Math.trunc(Number(this.#spellView.quantity) || 1)));
+    const quote = this.#priceService.quotePurchase(draft, quantity, this.#profile);
+    const name = this.#spellProductName(kind, spellEntry.name, castRank);
+    this.#cartService.setActiveDirection("buy");
+    this.#cartService.add({
+      direction: "buy",
+      quantity,
+      quote,
+      product: {
+        kind,
+        spellUuid: spellEntry.uuid,
+        spellRank: castRank,
+        name,
+        img: spellEntry.img,
+        level: draft.itemLevel
+      }
+    });
+    this.#cartChanged();
+    ui.notifications?.info?.(game.i18n.format("PF2E_MARKET_FORGE.Cart.Added", { quantity, name }));
     await this.render();
   }
 
@@ -661,22 +823,197 @@ export class MarketApplication extends HandlebarsApplicationMixin(ApplicationV2)
   }
 
   #prepareCartLine(line) {
-    const uuid = line.product.sourceUuid ?? line.product.inventoryItemUuid ?? null;
-    const preview = uuid ? this.#previews.get(uuid) ?? null : null;
+    const isSpell = ["scroll", "wand"].includes(line.product.kind);
+    const uuid = isSpell ? line.product.spellUuid : (line.product.sourceUuid ?? line.product.inventoryItemUuid ?? null);
+    const spellKey = isSpell ? this.#spellPreviewKey(uuid, line.product.spellRank) : null;
+    const preview = isSpell
+      ? this.#spellPreviews.get(spellKey) ?? null
+      : uuid ? this.#previews.get(uuid) ?? null : null;
     const maximum = line.direction === "sell" ? Math.max(1, Number(line.product.availableQuantity ?? line.quantity)) : 999;
     return {
       ...line,
+      isSpell,
       unitPriceLabel: this.#formatCopper(line.quotedUnitPrice),
       totalPriceLabel: this.#formatCopper(line.quotedTotalPrice),
       maxQuantity: maximum,
-      expanded: uuid ? this.#expandedItems.has(uuid) : false,
+      expanded: isSpell ? this.#expandedSpells.has(spellKey) : (uuid ? this.#expandedItems.has(uuid) : false),
       previewUuid: uuid,
       preview: preview ? {
         ...preview,
-        traitLabels: preview.traits.map((trait) => this.#traitLabel(trait))
+        traitLabels: preview.traits.map((trait) => this.#traitLabel(trait)),
+        traditionLabels: (preview.traditions ?? []).map((tradition) => this.#traditionLabel(tradition))
       } : null,
-      previewError: uuid ? this.#previewErrors.get(uuid) ?? null : null
+      previewError: isSpell
+        ? this.#spellPreviewErrors.get(spellKey) ?? null
+        : uuid ? this.#previewErrors.get(uuid) ?? null : null
     };
+  }
+
+  #prepareSpellEntry(entry) {
+    return {
+      ...entry,
+      selected: this.#spellView.selectedSpellUuid === entry.uuid,
+      rarityLabel: game.i18n.localize(`PF2E_MARKET_FORGE.Rarity.${entry.rarity}`),
+      traditionLabels: entry.traditions.map((tradition) => this.#traditionLabel(tradition)),
+      traditionsText: entry.traditions.map((tradition) => this.#traditionLabel(tradition)).join(", ")
+    };
+  }
+
+  async #prepareSpellBuilder(spellCatalog, maximumItemLevel) {
+    let selected = null;
+    const selectedUuid = this.#spellView.selectedSpellUuid;
+    if (selectedUuid) selected = spellCatalog.entries.find((entry) => entry.uuid === selectedUuid) ?? await this.#spellCatalogService.getEntry(selectedUuid, { profile: this.#profile });
+    if (!selected && spellCatalog.entries.length) {
+      selected = spellCatalog.entries[0];
+      this.#spellView = updateSpellViewState(this.#spellView, "selectedSpellUuid", selected.uuid);
+      this.#spellView = updateSpellViewState(this.#spellView, "castRank", null);
+    }
+    if (!selected) return null;
+
+    const kind = this.#normalizedSpellKind(selected);
+    const castRank = this.#normalizedSpellRank(selected, kind);
+    const draft = this.#createSpellDraft(selected, kind, castRank, maximumItemLevel);
+    let preview = null;
+    let previewError = null;
+    try {
+      preview = await this.#spellPreviewService.getPreview(selected.uuid, castRank);
+    } catch (error) {
+      previewError = error instanceof Error ? error.message : String(error);
+    }
+    const quote = this.#priceService.quotePurchase(draft, 1, this.#profile);
+    const rankOptions = this.#spellRankOptions(selected, kind, maximumItemLevel);
+    const kindOptions = [
+      { value: "scroll", label: game.i18n.localize("PF2E_MARKET_FORGE.Spells.Scroll"), disabled: this.#profile.spellItems?.scrolls !== true, selected: kind === "scroll" },
+      { value: "wand", label: game.i18n.localize("PF2E_MARKET_FORGE.Spells.Wand"), disabled: this.#profile.spellItems?.wands !== true || selected.baseRank > 9, selected: kind === "wand" }
+    ];
+    return {
+      spell: this.#prepareSpellEntry(selected),
+      kind,
+      kindOptions,
+      castRank,
+      rankOptions,
+      quantity: Math.max(1, Math.min(999, Math.trunc(Number(this.#spellView.quantity) || 1))),
+      itemLevel: draft.itemLevel,
+      priceLabel: this.#formatCopper(quote.unitPrice),
+      totalPriceLabel: this.#formatCopper(quote.unitPrice * Math.max(1, Math.min(999, Math.trunc(Number(this.#spellView.quantity) || 1)))),
+      available: draft.availability.available,
+      availabilityReasonText: draft.availability.reasons.map((reason) => this.#availabilityReasonLabel(reason, draft.availability.marketMaximumLevel)).join(" · "),
+      productName: this.#spellProductName(kind, selected.name, castRank),
+      preview: preview ? {
+        ...preview,
+        traitLabels: preview.traits.map((trait) => this.#traitLabel(trait)),
+        traditionLabels: preview.traditions.map((tradition) => this.#traditionLabel(tradition))
+      } : null,
+      previewError
+    };
+  }
+
+  #createSpellDraft(entry, kind, castRank, maximumItemLevel) {
+    const draft = this.#spellItemService.createDraft({
+      kind,
+      spellUuid: entry.uuid,
+      spellName: entry.name,
+      baseRank: entry.baseRank,
+      castRank,
+      rarity: entry.rarity
+    });
+    const availability = evaluateAvailability(
+      { level: draft.itemLevel, rarity: entry.rarity, sourcePack: entry.sourcePack },
+      this.#profile,
+      { maximumItemLevel, sourceKind: "spell" }
+    );
+    const enabled = kind === "scroll" ? this.#profile.spellItems?.scrolls === true : this.#profile.spellItems?.wands === true;
+    if (!enabled) {
+      availability.available = false;
+      availability.reasons = [...new Set([...(availability.reasons ?? []), "spell-item-type-disabled"])];
+    }
+    draft.availability = availability;
+    return draft;
+  }
+
+  #normalizedSpellKind(entry = null) {
+    const scrollAllowed = this.#profile.spellItems?.scrolls === true;
+    const wandAllowed = this.#profile.spellItems?.wands === true && (entry?.baseRank ?? 1) <= 9;
+    const requested = this.#spellView.kind;
+    if (requested === "wand" && wandAllowed) return "wand";
+    if (requested === "scroll" && scrollAllowed) return "scroll";
+    if (scrollAllowed) return "scroll";
+    if (wandAllowed) return "wand";
+    return requested === "wand" ? "wand" : "scroll";
+  }
+
+  #normalizedSpellRank(entry, kind) {
+    const maximum = kind === "scroll" ? 10 : 9;
+    const requested = Number(this.#spellView.castRank);
+    if (Number.isSafeInteger(requested) && requested >= entry.baseRank && requested <= maximum) return requested;
+    return Math.min(maximum, entry.baseRank);
+  }
+
+  #spellRankOptions(entry, kind, maximumItemLevel) {
+    const maximum = kind === "scroll" ? 10 : 9;
+    const selected = this.#normalizedSpellRank(entry, kind);
+    const options = [];
+    for (let rank = entry.baseRank; rank <= maximum; rank += 1) {
+      const draft = this.#createSpellDraft(entry, kind, rank, maximumItemLevel);
+      options.push({
+        value: rank,
+        label: game.i18n.format("PF2E_MARKET_FORGE.Spells.RankOption", { rank, level: draft.itemLevel, price: this.#formatCopper(draft.baseUnitPrice) }),
+        selected: rank === selected,
+        disabled: !draft.availability.available
+      });
+    }
+    return options;
+  }
+
+  #spellOptions(facets) {
+    return {
+      ranks: facets.ranks.map((rank) => ({ value: String(rank), label: String(rank), selected: String(this.#spellView.baseRank) === String(rank) })),
+      traditions: facets.traditions.map((tradition) => ({ value: tradition, label: this.#traditionLabel(tradition), selected: this.#spellView.tradition === tradition })),
+      rarities: ["common", "uncommon", "rare", "unique"].filter((rarity) => facets.rarities.includes(rarity)).map((rarity) => ({ value: rarity, label: game.i18n.localize(`PF2E_MARKET_FORGE.Rarity.${rarity}`), selected: this.#spellView.rarity === rarity })),
+      sources: facets.sources.map((source) => ({ ...source, selected: this.#spellView.sourcePack === source.id }))
+    };
+  }
+
+  #spellResultLabel(visible, total, truncated) {
+    return truncated
+      ? game.i18n.format("PF2E_MARKET_FORGE.Spells.ResultsTruncated", { visible, total })
+      : game.i18n.format("PF2E_MARKET_FORGE.Spells.Results", { count: total });
+  }
+
+  #spellProductName(kind, spellName, rank) {
+    const key = kind === "scroll" ? "PF2E_MARKET_FORGE.Spells.ScrollProduct" : "PF2E_MARKET_FORGE.Spells.WandProduct";
+    return game.i18n.format(key, { name: spellName, rank });
+  }
+
+  async #toggleSpellPreview(uuid, rank) {
+    if (!uuid || !Number.isSafeInteger(rank)) return;
+    const key = this.#spellPreviewKey(uuid, rank);
+    if (this.#expandedSpells.has(key)) this.#expandedSpells.delete(key);
+    else this.#expandedSpells.add(key);
+    this.#spellPreviewErrors.delete(key);
+    if (this.#expandedSpells.has(key) && !this.#spellPreviews.has(key)) {
+      try {
+        this.#spellPreviews.set(key, await this.#spellPreviewService.getPreview(uuid, rank));
+      } catch (error) {
+        this.#spellPreviewErrors.set(key, error instanceof Error ? error.message : String(error));
+      }
+    }
+    await this.render();
+  }
+
+  #spellPreviewKey(uuid, rank) {
+    return `${uuid}#${rank}`;
+  }
+
+  #traditionLabel(tradition) {
+    const key = globalThis.CONFIG?.PF2E?.magicTraditions?.[tradition];
+    if (key) {
+      const localized = game.i18n.localize(key);
+      if (localized !== key) return localized;
+    }
+    const own = `PF2E_MARKET_FORGE.Tradition.${tradition}`;
+    const localized = game.i18n.localize(own);
+    return localized === own ? tradition : localized;
   }
 
   #catalogOptions(facets) {
@@ -718,7 +1055,9 @@ export class MarketApplication extends HandlebarsApplicationMixin(ApplicationV2)
         level: maximumItemLevel ?? "—"
       });
     }
-    return game.i18n.localize(`PF2E_MARKET_FORGE.Availability.${reason}`);
+    const key = `PF2E_MARKET_FORGE.Availability.${reason}`;
+    const localized = game.i18n.localize(key);
+    return localized === key ? String(reason) : localized;
   }
 
   #saleReasonLabel(reason) {
@@ -817,6 +1156,16 @@ function emptyCatalogResult() {
     total: 0,
     truncated: false,
     facets: { categories: [], levels: [], rarities: [], sources: [] },
+    sources: []
+  };
+}
+
+function emptySpellCatalogResult() {
+  return {
+    entries: [],
+    total: 0,
+    truncated: false,
+    facets: { ranks: [], traditions: [], rarities: [], sources: [] },
     sources: []
   };
 }

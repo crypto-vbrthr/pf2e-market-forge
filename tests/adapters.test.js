@@ -5,8 +5,60 @@ import { InventoryAdapter } from "../scripts/pf2e/inventory-adapter.js";
 import { SpellItemAdapter } from "../scripts/pf2e/spell-item-adapter.js";
 
 describe("PF2e adapter boundary", () => {
-  it("keeps spell-item mutation disabled until the spell milestone", async () => {
-    await assert.rejects(() => new SpellItemAdapter().createScrollSource({}), /not implemented/i);
+  it("builds PF2e scroll sources from the system base item and embeds the selected heightened spell", async () => {
+    const base = {
+      type: "consumable",
+      toObject: () => ({
+        _id: "base-scroll",
+        type: "consumable",
+        name: "Base Scroll",
+        img: "scroll.webp",
+        system: {
+          category: "scroll",
+          traits: { rarity: "common", value: ["consumable", "magical"] },
+          description: { value: "<p>Base rules</p>" },
+          level: { value: 1 },
+          price: { value: { gp: 4 }, per: 1 }
+        }
+      })
+    };
+    const spell = {
+      type: "spell",
+      uuid: "Compendium.pf2e.spells-srd.Item.fireball",
+      sourceId: "Compendium.pf2e.spells-srd.Item.fireball",
+      name: "Fireball",
+      rarity: "uncommon",
+      system: { traits: { rarity: "uncommon", value: ["fire", "arcane"] } },
+      toObject: () => ({
+        _id: "spell-id",
+        type: "spell",
+        name: "Fireball",
+        system: {
+          traits: { rarity: "uncommon", value: ["fire", "arcane"] },
+          location: { value: "slot", heightenedLevel: null }
+        }
+      })
+    };
+    const adapter = new SpellItemAdapter({
+      resolver: async (uuid) => uuid === "Base.Scroll.3" ? base : spell,
+      configProvider: () => ({ scroll: { compendiumUuids: { 3: "Base.Scroll.3" }, nameTemplate: "PF2E.ScrollTemplate" } }),
+      localize: (key, data) => `${data.name} · ${data.level}`,
+      idFactory: () => "embedded-spell"
+    });
+    const source = await adapter.createScrollSource({
+      kind: "scroll", spellUuid: spell.uuid, castRank: 3, itemLevel: 5, baseUnitPrice: 3000, rarity: "uncommon"
+    });
+
+    assert.equal(source._id, null);
+    assert.equal(source.name, "Fireball · 3");
+    assert.equal(source.system.level.value, 5);
+    assert.deepEqual(source.system.price, { value: { pp: 3, gp: 0, sp: 0, cp: 0 }, per: 1 });
+    assert.equal(source.system.traits.rarity, "uncommon");
+    assert.deepEqual(source.system.traits.value, ["arcane", "consumable", "fire"]);
+    assert.match(source.system.description.value, /@UUID\[Compendium\.pf2e\.spells-srd\.Item\.fireball\]/);
+    assert.equal(source.system.spell._id, "embedded-spell");
+    assert.equal(source.system.spell.system.location.value, null);
+    assert.equal(source.system.spell.system.location.heightenedLevel, 3);
   });
 
   it("falls back to PF2e denomination fields when no copperValue getter is exposed", async () => {
@@ -42,6 +94,28 @@ describe("PF2e adapter boundary", () => {
     assert.equal(await adapter.getBalance("Actor.x"), 10345);
     assert.deepEqual(calls[0], ["remove", { pp: 2, gp: 3, sp: 4, cp: 5 }, { byValue: true }]);
     assert.deepEqual(calls[1], ["add", { pp: 0, gp: 3, sp: 4, cp: 5 }, { combineStacks: true }]);
+  });
+
+  it("adds an already generated physical source through the same stack-aware inventory path", async () => {
+    const actor = {
+      inventory: {
+        findStackableItem: () => null,
+        async add(source) {
+          assert.equal(source._id, undefined);
+          assert.equal(source.system.quantity, 2);
+          assert.equal(source.system.spell.system.location.heightenedLevel, 3);
+          return [{ id: "generated-scroll" }];
+        }
+      }
+    };
+    const adapter = new InventoryAdapter({ actorProvider: async () => actor });
+    const mutation = await adapter.addSource("Actor.x", {
+      _id: null,
+      type: "consumable",
+      system: { quantity: 1, spell: { system: { location: { heightenedLevel: 3 } } } }
+    }, 2, { sourceUuid: "spell-product:scroll:x:3" });
+    assert.equal(mutation.type, "create");
+    assert.equal(mutation.itemId, "generated-scroll");
   });
 
   it("records a created item and deletes exactly that item on rollback", async () => {

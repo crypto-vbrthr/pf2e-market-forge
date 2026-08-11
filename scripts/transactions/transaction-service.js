@@ -85,7 +85,8 @@ export class TransactionService {
           uuid: resolved.uuid ?? identity ?? null,
           name: resolved.name ?? requestedLine.product.name ?? "",
           level: resolved.level ?? null,
-          availableQuantity: resolved.availableQuantity ?? resolved.quantity ?? null
+          availableQuantity: resolved.availableQuantity ?? resolved.quantity ?? null,
+          purchaseSource: resolved.purchaseSource ? structuredClone(resolved.purchaseSource) : null
         },
         quantity: requestedLine.quantity,
         price,
@@ -210,7 +211,13 @@ export class TransactionService {
 
       for (const line of plan.lines) {
         const sourceUuid = line.resolvedProduct?.uuid;
-        if (!sourceUuid) throw new Error("Resolved purchase line has no source UUID.");
+        const purchaseSource = line.resolvedProduct?.purchaseSource;
+        if (purchaseSource) {
+          const mutation = await this.#inventoryAdapter.addSource(plan.itemActorUuid, purchaseSource, line.quantity, { sourceUuid });
+          mutations.push(mutation);
+          continue;
+        }
+        if (!sourceUuid) throw new Error("Resolved purchase line has no source UUID or generated source.");
         const mutation = await this.#inventoryAdapter.addFromUuid(plan.itemActorUuid, sourceUuid, line.quantity);
         mutations.push(mutation);
       }

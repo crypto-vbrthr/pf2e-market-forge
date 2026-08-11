@@ -92,3 +92,13 @@ These protections prevent the initial sale implementation from silently breaking
 ## Concurrency boundary
 
 Milestone 5 includes a module-wide in-client actor lock and Application-level checkout busy state. This prevents double-clicks and overlapping Market Forge transactions involving the same actor within one Foundry client. Cross-client authoritative serialization remains a later hardening task and must be completed before shared Party checkout is considered release-grade.
+
+## Milestone 6 spell-item boundary
+
+Spell compendia are indexed separately from physical equipment. Only ordinary ranked spells are eligible for generated spell items; cantrips, focus spells, and rituals are excluded.
+
+A spell-item cart product stores only user intent (`kind`, `spellUuid`, `spellRank`, quantity, display metadata). The cart price is never authoritative. During checkout Market Forge re-resolves the current spell entry, rechecks market availability, derives the rules price and item level again, and asks `SpellItemAdapter` to build a fresh PF2e consumable source.
+
+`SpellItemAdapter` is the PF2e-specific boundary for scroll/wand document shape. It starts from PF2e's configured base scroll/wand item for the selected rank, embeds a cloned current spell source with `system.location.heightenedLevel`, applies the spell rarity/traits, and overwrites level/price with the rules-derived Market Forge values. The generated physical source then enters the ordinary `InventoryAdapter.addSource()` stacking and rollback path.
+
+Ordinary scrolls support ranks 1–10. Ordinary wands support ranks 1–9. Rank selection may never be below the source spell's base rank.
