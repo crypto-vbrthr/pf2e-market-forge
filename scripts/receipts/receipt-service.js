@@ -12,10 +12,20 @@ export class ReceiptService {
   }
 
   async createPurchaseReceipt({ plan, remainingBalance = null }) {
+    return this.#createReceipt({ plan, remainingBalance, direction: "buy" });
+  }
+
+  async createSaleReceipt({ plan, remainingBalance = null }) {
+    return this.#createReceipt({ plan, remainingBalance, direction: "sell" });
+  }
+
+  async #createReceipt({ plan, remainingBalance, direction }) {
     const actor = await this.#actorProvider(plan.itemActorUuid);
     const requester = this.#userProvider(plan.requestedByUserId);
     const recipients = receiptRecipients(requester);
-    const content = renderPurchaseReceipt({ plan, actorName: actor?.name ?? plan.itemActorUuid, remainingBalance });
+    const content = direction === "sell"
+      ? renderSaleReceipt({ plan, actorName: actor?.name ?? plan.itemActorUuid, remainingBalance })
+      : renderPurchaseReceipt({ plan, actorName: actor?.name ?? plan.itemActorUuid, remainingBalance });
 
     return this.#messageCreator({
       user: globalThis.game?.user?.id,
@@ -25,7 +35,7 @@ export class ReceiptService {
       flags: {
         [MODULE_ID]: {
           transactionId: plan.transactionId,
-          direction: "buy",
+          direction,
           total: plan.total
         }
       }
@@ -34,10 +44,40 @@ export class ReceiptService {
 }
 
 export function renderPurchaseReceipt({ plan, actorName, remainingBalance = null }) {
-  const title = localize("PF2E_MARKET_FORGE.Receipt.PurchaseTitle", "Market Forge · Einkauf");
+  return renderReceipt({
+    plan,
+    actorName,
+    remainingBalance,
+    titleKey: "PF2E_MARKET_FORGE.Receipt.PurchaseTitle",
+    titleFallback: "Market Forge · Einkauf",
+    totalKey: "PF2E_MARKET_FORGE.Cart.Total",
+    totalFallback: "Gesamt",
+    balanceKey: "PF2E_MARKET_FORGE.Cart.Remaining",
+    balanceFallback: "Verbleibend",
+    icon: "fa-coins"
+  });
+}
+
+export function renderSaleReceipt({ plan, actorName, remainingBalance = null }) {
+  return renderReceipt({
+    plan,
+    actorName,
+    remainingBalance,
+    titleKey: "PF2E_MARKET_FORGE.Receipt.SaleTitle",
+    titleFallback: "Market Forge · Verkauf",
+    totalKey: "PF2E_MARKET_FORGE.Sell.TotalProceeds",
+    totalFallback: "Erlös",
+    balanceKey: "PF2E_MARKET_FORGE.Sell.BalanceAfter",
+    balanceFallback: "Guthaben danach",
+    icon: "fa-hand-holding-dollar"
+  });
+}
+
+function renderReceipt({ plan, actorName, remainingBalance, titleKey, titleFallback, totalKey, totalFallback, balanceKey, balanceFallback, icon }) {
+  const title = localize(titleKey, titleFallback);
   const totalLabel = formatCopper(plan.total);
   const remaining = Number.isSafeInteger(remainingBalance) && remainingBalance >= 0
-    ? `<div class="market-forge-receipt-total"><span>${escapeHtml(localize("PF2E_MARKET_FORGE.Cart.Remaining", "Verbleibend"))}</span><strong>${escapeHtml(formatCopper(remainingBalance))}</strong></div>`
+    ? `<div class="market-forge-receipt-total"><span>${escapeHtml(localize(balanceKey, balanceFallback))}</span><strong>${escapeHtml(formatCopper(remainingBalance))}</strong></div>`
     : "";
   const lines = plan.lines.map((line) => {
     const name = line.resolvedProduct?.name ?? line.product?.name ?? "?";
@@ -46,10 +86,10 @@ export function renderPurchaseReceipt({ plan, actorName, remainingBalance = null
 
   return [
     `<section class="pf2e-market-forge-receipt">`,
-    `<h3><i class="fa-solid fa-coins"></i> ${escapeHtml(title)}</h3>`,
+    `<h3><i class="fa-solid ${icon}"></i> ${escapeHtml(title)}</h3>`,
     `<p>${escapeHtml(actorName)}</p>`,
     `<ul>${lines}</ul>`,
-    `<div class="market-forge-receipt-total"><span>${escapeHtml(localize("PF2E_MARKET_FORGE.Cart.Total", "Gesamt"))}</span><strong>${escapeHtml(totalLabel)}</strong></div>`,
+    `<div class="market-forge-receipt-total"><span>${escapeHtml(localize(totalKey, totalFallback))}</span><strong>${escapeHtml(totalLabel)}</strong></div>`,
     remaining,
     `</section>`
   ].join("");

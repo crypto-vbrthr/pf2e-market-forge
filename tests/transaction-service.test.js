@@ -225,3 +225,231 @@ describe("Milestone 4 transaction execution", () => {
     await assert.rejects(() => service.execute({}), /use checkout/i);
   });
 });
+
+const saleRequest = (quantity = 2) => ({
+  direction: "sell",
+  profileId: "default",
+  itemActorUuid: "Actor.pc",
+  currencyActorUuid: "Actor.pc",
+  requestedByUserId: "User.player",
+  lines: [{ quantity, product: { kind: "item", inventoryItemUuid: "Actor.pc.Item.sword", quotedUnitPrice: 1 } }]
+});
+
+function resolvedSale(product, { price = 1000, quantity = 3, treasureCategory = null, available = true } = {}) {
+  return {
+    uuid: product.inventoryItemUuid,
+    name: "Owned Item",
+    baseUnitPrice: price,
+    treasureCategory,
+    quantity,
+    availableQuantity: quantity,
+    availability: { available, reasons: available ? [] : ["temporary"] }
+  };
+}
+
+describe("Milestone 5 sale transaction execution", () => {
+  it("re-resolves the owned item, ignores quoted sale prices, and projects credited balance", async () => {
+    const service = new TransactionService({
+      profileProvider: async () => profile,
+      productResolver: async (product, context) => {
+        assert.equal(context.direction, "sell");
+        assert.equal(context.itemActorUuid, "Actor.pc");
+        assert.equal(context.authoritative, true);
+        return resolvedSale(product);
+      },
+      balanceProvider: async () => 2000,
+      idFactory: () => "tx-sale-dry"
+    });
+
+    const { plan, validation } = await service.dryRun(saleRequest(2));
+    assert.equal(plan.total, 1000);
+    assert.equal(plan.lines[0].price.unitPrice, 500);
+    assert.equal("quotedUnitPrice" in plan.lines[0].product, false);
+    assert.equal(validation.valid, true);
+    assert.equal(validation.availableBalance, 2000);
+    assert.equal(validation.remainingBalance, 3000);
+  });
+
+  it("completes a sale by removing inventory first and then crediting proceeds", async () => {
+    let balance = 2000;
+    const order = [];
+    const receipts = [];
+    const service = new TransactionService({
+      profileProvider: async () => profile,
+      productResolver: async (product) => resolvedSale(product),
+      balanceProvider: async () => balance,
+      currencyAdapter: {
+        async add(_uuid, amount) { order.push("currency"); balance += amount; },
+        async remove(_uuid, amount) { balance -= amount; return true; }
+      },
+      inventoryAdapter: {
+        async removeOwnedItem(actorUuid, uuid, quantity) {
+          order.push("item");
+          assert.deepEqual([actorUuid, uuid, quantity], ["Actor.pc", "Actor.pc.Item.sword", 2]);
+          return { type: "quantity-remove", actorUuid, itemId: "sword", previousQuantity: 3 };
+        },
+        async rollbackMutation() { throw new Error("not expected"); },
+        async refresh() {}
+      },
+      receiptService: { async createSaleReceipt(data) { receipts.push(data); } },
+      permissionProvider: async () => true,
+      lock: new TransactionLock(),
+      idFactory: () => "tx-sale"
+    });
+
+    const result = await service.checkout(saleRequest(2));
+    assert.equal(result.status, "completed");
+    assert.equal(result.total, 1000);
+    assert.equal(result.remainingBalance, 3000);
+    assert.equal(balance, 3000);
+    assert.deepEqual(order, ["item", "currency"]);
+    assert.equal(receipts.length, 1);
+    assert.equal(receipts[0].plan.direction, "sell");
+  });
+
+  it("uses full value for gems during sale checkout", async () => {
+    const service = new TransactionService({
+      profileProvider: async () => profile,
+      productResolver: async (product) => resolvedSale(product, { price: 5000, quantity: 2, treasureCategory: "gem" }),
+      balanceProvider: async () => 0
+    });
+    const { plan, validation } = await service.dryRun(saleRequest(2));
+    assert.equal(validation.valid, true);
+    assert.equal(plan.total, 10000);
+    assert.equal(plan.lines[0].price.rule, "full-value-treasure");
+  });
+
+  it("rejects a requested quantity that is no longer present before mutation", async () => {
+    let mutated = false;
+    const service = new TransactionService({
+      profileProvider: async () => profile,
+      productResolver: async (product) => resolvedSale(product, { quantity: 1 }),
+      balanceProvider: async () => 0,
+      currencyAdapter: { async add() { mutated = true; }, async remove() { mutated = true; return true; } },
+      inventoryAdapter: { async removeOwnedItem() { mutated = true; }, async rollbackMutation() {} },
+      lock: new TransactionLock()
+    });
+    const result = await service.checkout(saleRequest(2));
+    assert.equal(result.status, "failed");
+    assert.equal(mutated, false);
+    assert.ok(result.errors.includes("insufficient-quantity"));
+  });
+
+  it("rejects inventory entries blocked by sellability rules before mutation", async () => {
+    let mutated = false;
+    const service = new TransactionService({
+      profileProvider: async () => profile,
+      productResolver: async (product) => resolvedSale(product, { available: false }),
+      balanceProvider: async () => 0,
+      currencyAdapter: { async add() { mutated = true; }, async remove() { mutated = true; return true; } },
+      inventoryAdapter: { async removeOwnedItem() { mutated = true; }, async rollbackMutation() {} },
+      lock: new TransactionLock()
+    });
+    const result = await service.checkout(saleRequest(1));
+    assert.equal(result.status, "failed");
+    assert.equal(mutated, false);
+    assert.ok(result.errors.includes("item-no-longer-available"));
+  });
+
+  it("restores already removed inventory when a later sale item removal fails", async () => {
+    let balance = 2000;
+    let removeCount = 0;
+    const rolledBack = [];
+    const req = saleRequest(1);
+    req.lines.push({ quantity: 1, product: { kind: "item", inventoryItemUuid: "Actor.pc.Item.fail" } });
+
+    const service = new TransactionService({
+      profileProvider: async () => profile,
+      productResolver: async (product) => resolvedSale(product, { price: 1000, quantity: 1 }),
+      balanceProvider: async () => balance,
+      currencyAdapter: { async add(_u, amount) { balance += amount; }, async remove(_u, amount) { balance -= amount; return true; } },
+      inventoryAdapter: {
+        async removeOwnedItem(actorUuid) {
+          removeCount += 1;
+          if (removeCount === 2) throw new Error("delete exploded");
+          return { type: "delete", actorUuid, itemId: "first", source: { _id: "first", type: "weapon", system: { quantity: 1 } } };
+        },
+        async rollbackMutation(mutation) { rolledBack.push(mutation.itemId); },
+        async refresh() {}
+      },
+      lock: new TransactionLock()
+    });
+
+    const result = await service.checkout(req);
+    assert.equal(result.status, "rolled-back");
+    assert.equal(balance, 2000);
+    assert.deepEqual(rolledBack, ["first"]);
+  });
+
+  it("restores sold items if crediting proceeds fails", async () => {
+    let balance = 2000;
+    const rolledBack = [];
+    const service = new TransactionService({
+      profileProvider: async () => profile,
+      productResolver: async (product) => resolvedSale(product, { quantity: 2 }),
+      balanceProvider: async () => balance,
+      currencyAdapter: {
+        async add() { throw new Error("currency write failed"); },
+        async remove(_u, amount) { balance -= amount; return true; }
+      },
+      inventoryAdapter: {
+        async removeOwnedItem(actorUuid) { return { type: "quantity-remove", actorUuid, itemId: "sword", previousQuantity: 2 }; },
+        async rollbackMutation(mutation) { rolledBack.push(mutation.itemId); },
+        async refresh() {}
+      },
+      lock: new TransactionLock()
+    });
+
+    const result = await service.checkout(saleRequest(1));
+    assert.equal(result.status, "rolled-back");
+    assert.equal(balance, 2000);
+    assert.deepEqual(rolledBack, ["sword"]);
+  });
+
+  it("compensates a partially credited balance when addCurrency throws", async () => {
+    let balance = 2000;
+    let itemRestored = false;
+    const service = new TransactionService({
+      profileProvider: async () => profile,
+      productResolver: async (product) => resolvedSale(product, { quantity: 2 }),
+      balanceProvider: async () => balance,
+      currencyAdapter: {
+        async add(_u, amount) { balance += amount; throw new Error("after partial credit"); },
+        async remove(_u, amount) { balance -= amount; return true; }
+      },
+      inventoryAdapter: {
+        async removeOwnedItem(actorUuid) { return { type: "quantity-remove", actorUuid, itemId: "sword", previousQuantity: 2 }; },
+        async rollbackMutation() { itemRestored = true; },
+        async refresh() {}
+      },
+      lock: new TransactionLock()
+    });
+
+    const result = await service.checkout(saleRequest(1));
+    assert.equal(result.status, "rolled-back");
+    assert.equal(balance, 2000);
+    assert.equal(itemRestored, true);
+  });
+
+  it("does not roll back a completed sale merely because its receipt fails", async () => {
+    let balance = 2000;
+    let rolledBack = false;
+    const service = new TransactionService({
+      profileProvider: async () => profile,
+      productResolver: async (product) => resolvedSale(product, { quantity: 2 }),
+      balanceProvider: async () => balance,
+      currencyAdapter: { async add(_u, amount) { balance += amount; }, async remove() { return true; } },
+      inventoryAdapter: {
+        async removeOwnedItem(actorUuid) { return { type: "quantity-remove", actorUuid, itemId: "sword", previousQuantity: 2 }; },
+        async rollbackMutation() { rolledBack = true; },
+        async refresh() {}
+      },
+      receiptService: { async createSaleReceipt() { throw new Error("chat unavailable"); } },
+      lock: new TransactionLock()
+    });
+    const result = await service.checkout(saleRequest(1));
+    assert.equal(result.status, "completed");
+    assert.equal(rolledBack, false);
+    assert.ok(result.warnings.includes("receipt-failed"));
+  });
+});

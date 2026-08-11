@@ -67,6 +67,62 @@ export class InventoryAdapter {
         };
   }
 
+
+  /**
+   * Remove a concrete embedded item quantity and return enough information to restore it exactly.
+   * This never accepts compendium items: itemUuid must belong to actorUuid.
+   */
+  async removeOwnedItem(actorUuid, itemUuid, quantity = 1) {
+    assertQuantity(quantity);
+    const actor = await this.#requireActor(actorUuid);
+    const item = await this.#resolveOwnedItem(actor, itemUuid);
+    if (!item) {
+      const error = new RangeError(`Owned item not found: ${itemUuid}`);
+      error.code = "item-not-found";
+      throw error;
+    }
+
+    const previousQuantity = Number(item.quantity ?? item.system?.quantity ?? 0);
+    if (!Number.isSafeInteger(previousQuantity) || previousQuantity < quantity) {
+      const error = new RangeError(`Insufficient quantity for ${itemUuid}.`);
+      error.code = "insufficient-quantity";
+      throw error;
+    }
+
+    if (quantity < previousQuantity) {
+      if (typeof actor.updateEmbeddedDocuments !== "function") {
+        throw new Error("PF2E Market Forge: Actor cannot update embedded Items during sale.");
+      }
+      await actor.updateEmbeddedDocuments("Item", [{
+        _id: item.id,
+        "system.quantity": previousQuantity - quantity
+      }], { render: false });
+      return {
+        type: "quantity-remove",
+        actorUuid,
+        itemId: item.id,
+        itemUuid,
+        removedQuantity: quantity,
+        previousQuantity
+      };
+    }
+
+    if (typeof actor.deleteEmbeddedDocuments !== "function") {
+      throw new Error("PF2E Market Forge: Actor cannot delete embedded Items during sale.");
+    }
+    const source = itemSource(item);
+    await actor.deleteEmbeddedDocuments("Item", [item.id], { render: false });
+    return {
+      type: "delete",
+      actorUuid,
+      itemId: item.id,
+      itemUuid,
+      removedQuantity: quantity,
+      previousQuantity,
+      source
+    };
+  }
+
   async rollbackMutation(mutation) {
     if (!mutation || typeof mutation !== "object") throw new TypeError("Inventory mutation is required.");
     const actor = await this.#requireActor(mutation.actorUuid);
@@ -79,7 +135,7 @@ export class InventoryAdapter {
       return;
     }
 
-    if (mutation.type === "stack-update") {
+    if (mutation.type === "stack-update" || mutation.type === "quantity-remove") {
       if (!Number.isSafeInteger(mutation.previousQuantity) || mutation.previousQuantity < 0) {
         throw new TypeError("Rollback mutation has no valid previous quantity.");
       }
@@ -93,6 +149,20 @@ export class InventoryAdapter {
       return;
     }
 
+    if (mutation.type === "delete") {
+      if (!mutation.source || typeof mutation.source !== "object") {
+        throw new TypeError("Rollback delete mutation has no item source snapshot.");
+      }
+      if (typeof actor.createEmbeddedDocuments !== "function") {
+        throw new Error("PF2E Market Forge: Actor cannot restore embedded Items during rollback.");
+      }
+      await actor.createEmbeddedDocuments("Item", [structuredClone(mutation.source)], {
+        keepId: true,
+        render: false
+      });
+      return;
+    }
+
     throw new TypeError(`Unsupported inventory mutation type: ${mutation.type}`);
   }
 
@@ -103,6 +173,15 @@ export class InventoryAdapter {
     } catch (_error) {
       // Rendering is best effort and never part of the economic transaction.
     }
+  }
+
+  async #resolveOwnedItem(actor, itemUuid) {
+    const resolved = await this.#itemProvider(itemUuid);
+    if (resolved && (resolved.actor?.uuid ?? resolved.parent?.uuid) === actor.uuid) return resolved;
+
+    const itemId = String(itemUuid ?? "").split(".Item.").at(-1);
+    if (!itemId || itemId === itemUuid) return null;
+    return actor.inventory?.get?.(itemId) ?? actor.items?.get?.(itemId) ?? null;
   }
 
   async #requireActor(actorUuid) {

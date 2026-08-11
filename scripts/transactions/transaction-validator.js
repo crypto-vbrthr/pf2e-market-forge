@@ -17,7 +17,15 @@ export function validateTransactionPlan(plan, { availableBalance = null } = {}) 
   let computedTotal = 0;
   for (const line of plan.lines ?? []) {
     if (!Number.isSafeInteger(line.quantity) || line.quantity < 1) errors.push("invalid-quantity");
-    if (line.availability?.available !== true) errors.push("item-no-longer-available");
+    if (line.availability?.available !== true) {
+      if (line.availability?.reasons?.includes?.("insufficient-quantity")) errors.push("insufficient-quantity");
+      else errors.push("item-no-longer-available");
+    }
+
+    if (plan.direction === "sell") {
+      const availableQuantity = Number(line.resolvedProduct?.availableQuantity);
+      if (Number.isSafeInteger(availableQuantity) && line.quantity > availableQuantity) errors.push("insufficient-quantity");
+    }
 
     try {
       assertCopperValue(line.price?.totalPrice, "line.price.totalPrice");
@@ -33,7 +41,8 @@ export function validateTransactionPlan(plan, { availableBalance = null } = {}) 
   if (availableBalance !== null) {
     try {
       assertCopperValue(availableBalance, "availableBalance");
-      remainingBalance = availableBalance - (Number.isSafeInteger(plan.total) ? plan.total : 0);
+      const total = Number.isSafeInteger(plan.total) ? plan.total : 0;
+      remainingBalance = plan.direction === "sell" ? availableBalance + total : availableBalance - total;
       if (plan.direction === "buy" && remainingBalance < 0) errors.push("insufficient-funds");
     } catch {
       errors.push("invalid-balance");

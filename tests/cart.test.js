@@ -64,3 +64,28 @@ describe("Cart contract", () => {
     assert.equal(cart.getState().buyLines[0].quantity, 1);
   });
 });
+
+describe("Sale cart contract", () => {
+  it("merges the same concrete inventory item and keeps sale totals separate from purchases", () => {
+    const cart = new CartService();
+    const product = { kind: "item", inventoryItemUuid: "Actor.hero.Item.potion", name: "Potion" };
+
+    cart.add({ direction: "sell", product, quantity: 1, quote: { unitPrice: 200, totalPrice: 200 } });
+    cart.add({ direction: "sell", product, quantity: 2, quote: { unitPrice: 200, totalPrice: 400 } });
+
+    const state = cart.getState();
+    assert.equal(state.sellLines.length, 1);
+    assert.equal(state.sellLines[0].quantity, 3);
+    assert.equal(cart.getQuotedTotal("sell"), 600);
+    assert.equal(cart.getQuotedTotal("buy"), 0);
+  });
+
+  it("tracks the active cart direction without mutating either cart", () => {
+    const cart = new CartService();
+    assert.equal(cart.getState().activeDirection, "buy");
+    cart.setActiveDirection("sell");
+    assert.equal(cart.getState().activeDirection, "sell");
+    assert.equal(cart.getState().buyLines.length, 0);
+    assert.equal(cart.getState().sellLines.length, 0);
+  });
+});

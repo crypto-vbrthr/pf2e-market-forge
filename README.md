@@ -2,9 +2,9 @@
 
 PF2E Market Forge is a Foundry VTT module for Pathfinder 2e that turns buying and selling equipment into a rules-aware market workflow for characters and the Party stash.
 
-## Milestone 4
+## Milestone 5
 
-Milestone 4 completes the first real **purchase** path.
+Milestone 5 completes the first real **buy and sell** loop.
 
 ### Available now
 
@@ -16,42 +16,41 @@ Milestone 4 completes the first real **purchase** path.
 - Apply fixed or party-derived market level limits.
 - Expand item rows to lazy-load the rendered PF2e description.
 - Add multiple items and quantities to a purchase cart.
-- Merge identical cart products and recalculate totals.
-- Run a checkout dry run without changing documents.
-- Complete a real purchase.
-- Re-resolve catalog entries from a fresh compendium index immediately before checkout.
-- Ignore all client/cart price claims and recompute the authoritative total.
-- Recheck actor permissions and live currency immediately before mutation.
-- Deduct PF2e currency through `ActorInventory.removeCurrency(..., { byValue: true })`.
-- Add physical items through `ActorInventory.add(..., { stack: true })`, so PF2e decides whether to create or stack.
-- Record exact inventory mutation compensation data for rollback.
-- Refund the purchase value and restore already-applied item mutations if a later item write fails.
-- Keep the cart intact after failed checkout; clear it only after success.
+- Merge identical purchase cart products and recalculate totals.
+- Run purchase checkout as a dry run or complete a real purchase.
+- Browse the selected character or Party inventory in the Sell tab.
+- Expand sellable inventory rows to inspect their PF2e descriptions before selling.
+- Add concrete inventory items and partial quantities to a separate sale cart.
+- Calculate standard sale proceeds at 50% through the central pricing service.
+- Apply full-value sale treatment to configured art objects, gems, and materials.
+- Block currency, temporary/infused, unidentified, equipped, invested, contained, subitem-bearing, quantity-less, and valueless entries from sale.
+- Re-resolve live inventory items and quantities immediately before sale checkout.
+- Remove sold quantities first, then credit PF2e currency only after every item mutation succeeds.
+- Restore removed items/quantities if a later sale mutation or currency credit fails.
+- Compensate an unexpected partial currency credit if the PF2e write reports failure afterward.
+- Re-resolve catalog entries from a fresh compendium index immediately before purchase checkout.
+- Ignore all client/cart price claims and recompute authoritative purchase and sale totals.
+- Recheck actor permissions, current inventory quantities, and live currency immediately before mutation.
+- Use PF2e inventory/currency operations through adapter boundaries rather than writing economic state from the UI.
+- Keep the relevant cart intact after failed checkout and clear it only after success.
 - Prevent duplicate checkout from the same Market Forge client and protect same-actor execution with a shared local transaction lock.
-- Write a private purchase receipt to the requesting user and GMs. Receipt failure never rolls back an otherwise successful purchase.
+- Write private purchase or sale receipts to the requesting user and GMs. Receipt failure never rolls back an otherwise successful transaction.
 
 ### Transaction model
 
-Foundry does not provide a multi-document database transaction for this workflow. Market Forge therefore uses a **compensating transaction**:
+Foundry does not provide a multi-document database transaction for this workflow. Market Forge therefore uses **compensating transactions**.
 
-1. normalize the checkout request and discard supplied prices;
-2. acquire the actor transaction lock;
-3. reload/reindex requested products and recompute availability and prices;
-4. validate permissions and live funds;
-5. remove currency using PF2e's currency API;
-6. add/stack each item using PF2e's inventory API;
-7. if an item write fails, undo successful item mutations in reverse order and refund the purchase value;
-8. create the chat receipt only after economic state is complete.
+For purchases it revalidates the request, removes currency, applies all inventory additions, then reverses successful item mutations and refunds the payment if a later inventory write fails.
 
-A `rollback-failed` result is treated as a critical state and is surfaced prominently to the user.
+For sales it revalidates each live owned item and quantity, removes all sold items/quantities first, credits the proceeds only after the item phase succeeds, and restores item mutations if the credit phase fails. A `rollback-failed` result is treated as a critical state and surfaced prominently for GM review.
 
 ### Still intentionally inactive
 
-- Selling inventory items.
-- Choosing a different character/Party actor as payment source or recipient.
+- Choosing a different character/Party actor as payment source, purchase recipient, sale source, or proceeds recipient.
 - Scroll and wand browser/generation UI.
 - Real merchant actors and finite merchant stock.
-- Cross-client GM-authoritative socket serialization. M4 has a module-wide lock inside one Foundry client; later hardening will route player checkout through an authoritative coordinator before shared Party purchasing is considered final.
+- Market profile/source configuration UI.
+- Cross-client GM-authoritative socket serialization. M5 still uses a module-wide lock inside one Foundry client; later hardening will route player checkout through an authoritative coordinator before shared Party transactions are considered release-grade.
 
 ## Default market profile
 
@@ -63,8 +62,9 @@ The initial profile uses:
 - Rarity: common enabled; uncommon, rare, and unique displayed as unavailable
 - Buy multiplier: 100%
 - Sell multiplier: 50%
+- Full-value treasure sale categories: art objects, gems, and materials
 
-A dedicated profile/source configuration UI is planned after the core shopping workflow is working end to end.
+A dedicated profile/source configuration UI is planned after the core market workflow is working end to end.
 
 ## Development
 

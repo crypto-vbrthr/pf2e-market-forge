@@ -47,10 +47,6 @@ export class TransactionService {
 
   async prepare(request, { maximumItemLevel = null, authoritative = false } = {}) {
     const normalized = normalizeCheckoutRequest(request);
-    if (normalized.direction !== "buy") {
-      throw new Error("PF2E Market Forge: Milestone 4 executes purchase transactions only.");
-    }
-
     const profile = await this.#profileProvider(normalized.profileId);
     if (!profile) throw new RangeError(`Market profile not found: ${normalized.profileId}`);
 
@@ -61,22 +57,39 @@ export class TransactionService {
       const resolved = await this.#productResolver(requestedLine.product, {
         profile,
         maximumItemLevel,
-        authoritative
+        authoritative,
+        direction: normalized.direction,
+        itemActorUuid: normalized.itemActorUuid,
+        currencyActorUuid: normalized.currencyActorUuid
       });
-      if (!resolved) throw new RangeError(`Market product not found: ${requestedLine.product.sourceUuid ?? "unknown"}`);
+      const identity = requestedLine.product.inventoryItemUuid ?? requestedLine.product.sourceUuid ?? "unknown";
+      if (!resolved) throw new RangeError(`Market product not found: ${identity}`);
 
-      const price = this.#priceService.quotePurchase(resolved, requestedLine.quantity, profile);
+      const price = normalized.direction === "buy"
+        ? this.#priceService.quotePurchase(resolved, requestedLine.quantity, profile)
+        : this.#priceService.quoteSale(resolved, requestedLine.quantity, profile);
       total += price.totalPrice;
+
+      const availability = structuredClone(resolved.availability ?? { available: true, reasons: [] });
+      if (normalized.direction === "sell") {
+        const availableQuantity = Number(resolved.availableQuantity ?? resolved.quantity ?? 0);
+        if (!Number.isSafeInteger(availableQuantity) || requestedLine.quantity > availableQuantity) {
+          availability.available = false;
+          availability.reasons = [...new Set([...(availability.reasons ?? []), "insufficient-quantity"])]
+        }
+      }
+
       lines.push({
         product: structuredClone(requestedLine.product),
         resolvedProduct: {
-          uuid: resolved.uuid ?? requestedLine.product.sourceUuid ?? null,
+          uuid: resolved.uuid ?? identity ?? null,
           name: resolved.name ?? requestedLine.product.name ?? "",
-          level: resolved.level ?? null
+          level: resolved.level ?? null,
+          availableQuantity: resolved.availableQuantity ?? resolved.quantity ?? null
         },
         quantity: requestedLine.quantity,
         price,
-        availability: structuredClone(resolved.availability ?? { available: true, reasons: [] })
+        availability
       });
     }
 
@@ -94,9 +107,7 @@ export class TransactionService {
   }
 
   async validate(plan) {
-    const availableBalance = plan?.direction === "buy"
-      ? await this.#balanceProvider(plan.currencyActorUuid)
-      : null;
+    const availableBalance = await this.#safeBalance(plan.currencyActorUuid);
     const validation = validateTransactionPlan(plan, { availableBalance });
 
     if (validation.valid) {
@@ -108,7 +119,7 @@ export class TransactionService {
       });
       if (!permission) {
         validation.valid = false;
-        validation.errors = [...new Set([...validation.errors, "permission-denied"])];
+        validation.errors = [...new Set([...validation.errors, "permission-denied"])]
       }
     }
 
@@ -122,7 +133,7 @@ export class TransactionService {
   }
 
   /**
-   * Execute a new purchase request. The request is freshly resolved and priced while holding
+   * Execute a new purchase or sale request. The request is freshly resolved and priced while holding
    * the local actor transaction lock; a stale dry-run plan is never accepted as checkout input.
    */
   async checkout(request, options = {}) {
@@ -172,11 +183,16 @@ export class TransactionService {
   }
 
   async #executeValidated(plan) {
+    return plan.direction === "sell"
+      ? this.#executeSaleValidated(plan)
+      : this.#executePurchaseValidated(plan);
+  }
+
+  async #executePurchaseValidated(plan) {
     const mutations = [];
     let currencyRemoved = false;
 
     try {
-      // removeCurrency performs its own live sufficiency check, closing the gap after validation.
       const removed = await this.#currencyAdapter.remove(plan.currencyActorUuid, plan.total);
       if (!removed) {
         return {
@@ -208,7 +224,7 @@ export class TransactionService {
         warnings.push("receipt-failed");
       }
 
-      await this.#inventoryAdapter.refresh?.(plan.itemActorUuid);
+      await this.#safeRefresh(plan.itemActorUuid);
       return {
         transactionId: plan.transactionId,
         status: "completed",
@@ -229,39 +245,103 @@ export class TransactionService {
       const rollbackErrors = [];
 
       for (const mutation of [...mutations].reverse()) {
-        try {
-          await this.#inventoryAdapter.rollbackMutation(mutation);
-        } catch (rollbackError) {
-          rollbackErrors.push(rollbackError instanceof Error ? rollbackError.message : String(rollbackError));
-        }
+        await this.#attemptRollbackMutation(mutation, rollbackErrors);
       }
 
       if (currencyRemoved) {
         try {
           await this.#currencyAdapter.add(plan.currencyActorUuid, plan.total);
         } catch (rollbackError) {
-          rollbackErrors.push(rollbackError instanceof Error ? rollbackError.message : String(rollbackError));
+          rollbackErrors.push(messageOf(rollbackError));
         }
       }
 
-      try {
-        await this.#inventoryAdapter.refresh?.(plan.itemActorUuid);
-      } catch (_refreshError) {
-        // Never changes rollback status.
+      await this.#safeRefresh(plan.itemActorUuid);
+      return rollbackResult(plan, error, rollbackErrors, await this.#safeBalance(plan.currencyActorUuid));
+    }
+  }
+
+  async #executeSaleValidated(plan) {
+    const mutations = [];
+    const startingBalance = await this.#safeBalance(plan.currencyActorUuid);
+
+    try {
+      for (const line of plan.lines) {
+        const itemUuid = line.resolvedProduct?.uuid ?? line.product?.inventoryItemUuid;
+        if (!itemUuid) throw new Error("Resolved sale line has no inventory item UUID.");
+        const mutation = await this.#inventoryAdapter.removeOwnedItem(plan.itemActorUuid, itemUuid, line.quantity);
+        mutations.push(mutation);
       }
 
+      // PF2e normally applies addCurrency as a grouped actor update. If an implementation throws
+      // after a partial mutation, the outer compensation path compares against startingBalance.
+      await this.#currencyAdapter.add(plan.currencyActorUuid, plan.total);
+
+      const remainingBalance = await this.#safeBalance(plan.currencyActorUuid);
+      const warnings = [];
+      try {
+        await this.#receiptService?.createSaleReceipt?.({ plan, remainingBalance });
+      } catch (error) {
+        console.warn?.("pf2e-market-forge | Sale completed but receipt creation failed", error);
+        warnings.push("receipt-failed");
+      }
+
+      await this.#safeRefresh(plan.itemActorUuid);
       return {
         transactionId: plan.transactionId,
-        status: rollbackErrors.length ? "rollback-failed" : "rolled-back",
+        status: "completed",
         direction: plan.direction,
         total: plan.total,
-        remainingBalance: await this.#safeBalance(plan.currencyActorUuid),
-        lines: [],
-        errors: ["transaction-error"],
-        warnings: rollbackErrors.length ? ["rollback-incomplete"] : [],
-        cause: error instanceof Error ? error.message : String(error),
-        rollbackErrors
+        remainingBalance,
+        lines: plan.lines.map((line, index) => ({
+          product: structuredClone(line.product),
+          resolvedProduct: structuredClone(line.resolvedProduct),
+          quantity: line.quantity,
+          price: structuredClone(line.price),
+          mutation: structuredClone(mutations[index])
+        })),
+        errors: [],
+        warnings
       };
+    } catch (error) {
+      const rollbackErrors = [];
+      await this.#compensateUnexpectedCredit(plan.currencyActorUuid, startingBalance, rollbackErrors);
+
+      for (const mutation of [...mutations].reverse()) {
+        await this.#attemptRollbackMutation(mutation, rollbackErrors);
+      }
+
+      await this.#safeRefresh(plan.itemActorUuid);
+      return rollbackResult(plan, error, rollbackErrors, await this.#safeBalance(plan.currencyActorUuid));
+    }
+  }
+
+  async #attemptRollbackMutation(mutation, rollbackErrors) {
+    try {
+      await this.#inventoryAdapter.rollbackMutation(mutation);
+    } catch (rollbackError) {
+      rollbackErrors.push(messageOf(rollbackError));
+    }
+  }
+
+  async #compensateUnexpectedCredit(actorUuid, startingBalance, rollbackErrors) {
+    if (!Number.isSafeInteger(startingBalance) || startingBalance < 0) return;
+    const current = await this.#safeBalance(actorUuid);
+    if (!Number.isSafeInteger(current) || current <= startingBalance) return;
+    const excess = current - startingBalance;
+    try {
+      const removed = await this.#currencyAdapter.remove(actorUuid, excess);
+      if (!removed) rollbackErrors.push(`Could not remove unexpected credited currency (${excess} cp).`);
+    } catch (rollbackError) {
+      rollbackErrors.push(messageOf(rollbackError));
+    }
+  }
+
+  async #safeRefresh(actorUuid) {
+    try {
+      await this.#inventoryAdapter.refresh?.(actorUuid);
+    } catch (_error) {
+      // Rendering never changes transaction outcome.
     }
   }
 
@@ -272,4 +352,24 @@ export class TransactionService {
       return null;
     }
   }
+}
+
+function rollbackResult(plan, error, rollbackErrors, remainingBalance) {
+  const errorCode = typeof error?.code === "string" ? error.code : "transaction-error";
+  return {
+    transactionId: plan.transactionId,
+    status: rollbackErrors.length ? "rollback-failed" : "rolled-back",
+    direction: plan.direction,
+    total: plan.total,
+    remainingBalance,
+    lines: [],
+    errors: [errorCode],
+    warnings: rollbackErrors.length ? ["rollback-incomplete"] : [],
+    cause: messageOf(error),
+    rollbackErrors
+  };
+}
+
+function messageOf(error) {
+  return error instanceof Error ? error.message : String(error);
 }

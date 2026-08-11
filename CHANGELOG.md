@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.0.6 - Milestone 5
+
+- Added real sale checkout for character and Party inventories.
+- Added sell-inventory mapping with lazy item previews and partial-quantity selection.
+- Added separate sale-cart state, quantity editing, removal, totals, dry-run validation, and checkout execution.
+- Added standard 50% sale pricing and configured full-value handling for art objects, gems, and materials.
+- Added sale protections for currency, temporary/infused, unidentified, equipped, invested, contained, subitem-bearing, quantity-less, and valueless items.
+- Added authoritative live re-resolution of inventory items, quantities, sellability, and prices before checkout.
+- Added partial stack reduction and full embedded-item deletion with exact compensation records.
+- Added compensating sale rollback, including restoration of removed items/quantities and compensation of unexpected partial currency credit.
+- Added private sale receipts and non-economic receipt failure behavior.
+- Added M5 sale inventory, adapter mutation, pricing, cart, transaction, rollback, receipt, and template contract tests.
+
 ## 0.0.5 - Milestone 4
 
 - Added real purchase checkout for character and Party actors.

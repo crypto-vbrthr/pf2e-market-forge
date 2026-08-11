@@ -90,3 +90,70 @@ describe("PF2e adapter boundary", () => {
     assert.deepEqual(updates, [["Item", [{ _id: "stack-1", "system.quantity": 4 }]]]);
   });
 });
+
+describe("PF2e sale inventory mutations", () => {
+  it("reduces a partial owned stack and restores its exact previous quantity", async () => {
+    const updates = [];
+    const owned = {
+      uuid: "Actor.x.Item.stack",
+      id: "stack",
+      actor: { uuid: "Actor.x" },
+      quantity: 5,
+      system: { quantity: 5 },
+      toObject: () => ({ _id: "stack", type: "consumable", system: { quantity: 5 } })
+    };
+    const actor = {
+      uuid: "Actor.x",
+      inventory: { get: () => owned },
+      async updateEmbeddedDocuments(type, data) { updates.push([type, data]); }
+    };
+    const adapter = new InventoryAdapter({ actorProvider: async () => actor, itemProvider: async () => owned });
+    const mutation = await adapter.removeOwnedItem("Actor.x", owned.uuid, 2);
+    assert.deepEqual(mutation, {
+      type: "quantity-remove",
+      actorUuid: "Actor.x",
+      itemId: "stack",
+      itemUuid: owned.uuid,
+      removedQuantity: 2,
+      previousQuantity: 5
+    });
+    assert.deepEqual(updates[0], ["Item", [{ _id: "stack", "system.quantity": 3 }]]);
+    await adapter.rollbackMutation(mutation);
+    assert.deepEqual(updates[1], ["Item", [{ _id: "stack", "system.quantity": 5 }]]);
+  });
+
+  it("deletes a full owned stack and restores the source with its id on rollback", async () => {
+    const deletes = [];
+    const creates = [];
+    const source = { _id: "sword", type: "weapon", system: { quantity: 1 } };
+    const owned = {
+      uuid: "Actor.x.Item.sword",
+      id: "sword",
+      actor: { uuid: "Actor.x" },
+      quantity: 1,
+      system: { quantity: 1 },
+      toObject: () => structuredClone(source)
+    };
+    const actor = {
+      uuid: "Actor.x",
+      inventory: { get: () => owned },
+      async deleteEmbeddedDocuments(type, ids) { deletes.push([type, ids]); },
+      async createEmbeddedDocuments(type, data, options) { creates.push([type, data, options]); }
+    };
+    const adapter = new InventoryAdapter({ actorProvider: async () => actor, itemProvider: async () => owned });
+    const mutation = await adapter.removeOwnedItem("Actor.x", owned.uuid, 1);
+    assert.equal(mutation.type, "delete");
+    assert.deepEqual(deletes, [["Item", ["sword"]]]);
+    await adapter.rollbackMutation(mutation);
+    assert.equal(creates[0][0], "Item");
+    assert.deepEqual(creates[0][1], [source]);
+    assert.equal(creates[0][2].keepId, true);
+  });
+
+  it("rejects a sale quantity larger than the live stack", async () => {
+    const owned = { uuid: "Actor.x.Item.x", id: "x", actor: { uuid: "Actor.x" }, quantity: 1, system: { quantity: 1 } };
+    const actor = { uuid: "Actor.x", inventory: { get: () => owned } };
+    const adapter = new InventoryAdapter({ actorProvider: async () => actor, itemProvider: async () => owned });
+    await assert.rejects(() => adapter.removeOwnedItem("Actor.x", owned.uuid, 2), (error) => error.code === "insufficient-quantity");
+  });
+});

@@ -133,17 +133,83 @@
     {{/if}}
 
     {{#if sellTab.active}}
-      <section class="market-forge-panel">
-        <div class="market-forge-section-heading"><div><h3>{{localize "PF2E_MARKET_FORGE.Sell.Title"}}</h3><p>{{localize "PF2E_MARKET_FORGE.Sell.Text"}}</p></div><span class="market-forge-count"><i class="fa-solid fa-backpack"></i> {{inventoryCount}}</span></div>
-        <div class="market-forge-empty-state compact"><i class="fa-solid fa-tags"></i><h3>{{localize "PF2E_MARKET_FORGE.Sell.InventoryPendingTitle"}}</h3><p>{{localize "PF2E_MARKET_FORGE.Sell.InventoryPendingText"}}</p></div>
+      <section class="market-forge-panel market-forge-sell-panel">
+        <div class="market-forge-section-heading">
+          <div><h3>{{localize "PF2E_MARKET_FORGE.Sell.Title"}}</h3><p>{{localize "PF2E_MARKET_FORGE.Sell.TextM5"}}</p></div>
+          <span class="market-forge-count"><i class="fa-solid fa-backpack"></i> {{saleInventory.sellableCount}} / {{saleInventory.count}}</span>
+        </div>
+        <div class="market-forge-catalog-summary">
+          <span><i class="fa-solid fa-percent"></i> {{localize "PF2E_MARKET_FORGE.Sell.StandardRule"}}</span>
+          <span><i class="fa-solid fa-gem"></i> {{localize "PF2E_MARKET_FORGE.Sell.FullValueRule"}}</span>
+        </div>
+
+        {{#if saleInventory.hasEntries}}
+          <div class="market-forge-catalog-list market-forge-sale-list">
+            {{#each saleInventory.entries}}
+              <article class="market-forge-item-row {{#unless available}}unavailable{{/unless}}">
+                <div class="market-forge-item-main">
+                  <button type="button" class="market-forge-expand-button" data-market-expand-item="{{uuid}}" title="{{localize "PF2E_MARKET_FORGE.Buy.ToggleDetails"}}">
+                    <i class="fa-solid {{#if expanded}}fa-chevron-down{{else}}fa-chevron-right{{/if}}"></i>
+                  </button>
+                  <img src="{{img}}" alt="{{name}}" class="market-forge-item-image" />
+                  <div class="market-forge-item-identity">
+                    <strong>{{name}}</strong>
+                    <small>{{typeLabel}} · {{rarityLabel}} · {{localize "PF2E_MARKET_FORGE.Quantity"}} {{quantity}}</small>
+                    {{#unless available}}<small class="market-forge-unavailable-reason"><i class="fa-solid fa-lock"></i> {{availabilityReasonText}}</small>{{/unless}}
+                  </div>
+                  <div class="market-forge-item-level"><span>{{localize "PF2E_MARKET_FORGE.ItemLevel"}}</span><strong>{{level}}</strong></div>
+                  <div class="market-forge-item-price"><span>{{localize "PF2E_MARKET_FORGE.Sell.SalePrice"}}</span><strong>{{priceLabel}}</strong><small>{{ruleLabel}}</small></div>
+                  <div class="market-forge-buy-controls">
+                    <input type="number" min="1" max="{{quantity}}" step="1" value="1" data-market-sale-quantity="{{uuid}}" aria-label="{{localize "PF2E_MARKET_FORGE.Quantity"}}" {{#unless available}}disabled{{/unless}} />
+                    <button type="button" class="market-forge-cart-button" data-market-add-sale="{{uuid}}" {{#unless available}}disabled{{/unless}}>
+                      <i class="fa-solid fa-tags"></i>{{localize "PF2E_MARKET_FORGE.Sell.AddToSaleCart"}}
+                    </button>
+                  </div>
+                </div>
+
+                {{#if expanded}}
+                  <div class="market-forge-item-preview">
+                    {{#if preview}}
+                      {{#if preview.traitLabels.length}}<div class="market-forge-traits">{{#each preview.traitLabels}}<span>{{this}}</span>{{/each}}</div>{{/if}}
+                      <div class="market-forge-preview-meta">
+                        <span><b>{{localize "PF2E_MARKET_FORGE.Sell.BaseValue"}}:</b> {{basePriceLabel}}</span>
+                        <span><b>{{localize "PF2E_MARKET_FORGE.Sell.SalePrice"}}:</b> {{priceLabel}}</span>
+                        {{#if preview.usage}}<span><b>{{localize "PF2E_MARKET_FORGE.Preview.Usage"}}:</b> {{preview.usage}}</span>{{/if}}
+                        {{#if preview.bulk}}<span><b>{{localize "PF2E_MARKET_FORGE.Preview.Bulk"}}:</b> {{preview.bulk}}</span>{{/if}}
+                      </div>
+                      <div class="market-forge-description">{{{preview.renderedDescription}}}</div>
+                      <div class="market-forge-preview-actions"><button type="button" data-market-open-item="{{uuid}}"><i class="fa-solid fa-up-right-from-square"></i>{{localize "PF2E_MARKET_FORGE.Buy.OpenItemSheet"}}</button></div>
+                    {{else}}
+                      {{#if previewError}}
+                        <div class="market-forge-warning"><i class="fa-solid fa-triangle-exclamation"></i> {{previewError}}</div>
+                      {{else}}
+                        <div class="market-forge-preview-loading"><i class="fa-solid fa-spinner fa-spin"></i> {{localize "PF2E_MARKET_FORGE.Buy.LoadingDetails"}}</div>
+                      {{/if}}
+                    {{/if}}
+                  </div>
+                {{/if}}
+              </article>
+            {{/each}}
+          </div>
+        {{else}}
+          <div class="market-forge-empty-state compact"><i class="fa-solid fa-tags"></i><h3>{{localize "PF2E_MARKET_FORGE.Sell.EmptyTitle"}}</h3><p>{{localize "PF2E_MARKET_FORGE.Sell.EmptyText"}}</p></div>
+        {{/if}}
       </section>
     {{/if}}
 
     {{#if cartTab.active}}
       <section class="market-forge-panel market-forge-cart-panel">
         <div class="market-forge-section-heading">
-          <div><h3>{{localize "PF2E_MARKET_FORGE.Cart.Title"}}</h3><p>{{localize "PF2E_MARKET_FORGE.Cart.TextM4"}}</p></div>
+          <div>
+            <h3>{{localize "PF2E_MARKET_FORGE.Cart.Title"}}</h3>
+            <p>{{#if cart.isSell}}{{localize "PF2E_MARKET_FORGE.Sell.CartText"}}{{else}}{{localize "PF2E_MARKET_FORGE.Cart.TextM4"}}{{/if}}</p>
+          </div>
           <strong class="market-forge-total">{{cart.quotedTotalLabel}}</strong>
+        </div>
+
+        <div class="market-forge-cart-direction">
+          <button type="button" class="{{#if cart.isBuy}}active{{/if}}" data-cart-direction="buy"><i class="fa-solid fa-basket-shopping"></i> {{localize "PF2E_MARKET_FORGE.Tabs.Buy"}} <span class="market-forge-badge">{{cart.buyCount}}</span></button>
+          <button type="button" class="{{#if cart.isSell}}active{{/if}}" data-cart-direction="sell"><i class="fa-solid fa-hand-holding-dollar"></i> {{localize "PF2E_MARKET_FORGE.Tabs.Sell"}} <span class="market-forge-badge">{{cart.sellCount}}</span></button>
         </div>
 
         {{#if cart.hasLines}}
@@ -156,12 +222,12 @@
                     <img src="{{product.img}}" alt="{{product.name}}" class="market-forge-item-image" />
                     <div class="market-forge-item-identity"><strong>{{product.name}}</strong><small>{{localize "PF2E_MARKET_FORGE.ItemLevel"}} {{product.level}} · {{unitPriceLabel}} {{localize "PF2E_MARKET_FORGE.Cart.PerItem"}}</small></div>
                     <div class="market-forge-quantity-stepper">
-                      <button type="button" data-cart-adjust-line="{{id}}" data-delta="-1"><i class="fa-solid fa-minus"></i></button>
-                      <input type="number" min="1" max="999" value="{{quantity}}" data-cart-quantity-line="{{id}}" aria-label="{{localize "PF2E_MARKET_FORGE.Quantity"}}" />
-                      <button type="button" data-cart-adjust-line="{{id}}" data-delta="1"><i class="fa-solid fa-plus"></i></button>
+                      <button type="button" data-cart-adjust-line="{{id}}" data-cart-direction="{{direction}}" data-delta="-1"><i class="fa-solid fa-minus"></i></button>
+                      <input type="number" min="1" max="{{maxQuantity}}" value="{{quantity}}" data-cart-quantity-line="{{id}}" data-cart-direction="{{direction}}" aria-label="{{localize "PF2E_MARKET_FORGE.Quantity"}}" />
+                      <button type="button" data-cart-adjust-line="{{id}}" data-cart-direction="{{direction}}" data-delta="1"><i class="fa-solid fa-plus"></i></button>
                     </div>
                     <strong class="market-forge-line-total">{{totalPriceLabel}}</strong>
-                    <button type="button" class="market-forge-icon-button" data-cart-remove-line="{{id}}" title="{{localize "PF2E_MARKET_FORGE.Cart.Remove"}}"><i class="fa-solid fa-trash"></i></button>
+                    <button type="button" class="market-forge-icon-button" data-cart-remove-line="{{id}}" data-cart-direction="{{direction}}" title="{{localize "PF2E_MARKET_FORGE.Cart.Remove"}}"><i class="fa-solid fa-trash"></i></button>
                   </div>
                   {{#if expanded}}
                     <div class="market-forge-item-preview market-forge-cart-preview">
@@ -184,33 +250,58 @@
             </div>
 
             <aside class="market-forge-checkout-card">
-              <h3>{{localize "PF2E_MARKET_FORGE.Cart.CheckoutTitle"}}</h3>
+              <h3>{{#if cart.isSell}}{{localize "PF2E_MARKET_FORGE.Sell.CheckoutTitle"}}{{else}}{{localize "PF2E_MARKET_FORGE.Cart.CheckoutTitle"}}{{/if}}</h3>
               <dl>
-                <div><dt>{{localize "PF2E_MARKET_FORGE.Cart.Recipient"}}</dt><dd>{{cart.itemActorName}}</dd></div>
-                <div><dt>{{localize "PF2E_MARKET_FORGE.Cart.PaymentSource"}}</dt><dd>{{cart.currencyActorName}}</dd></div>
-                <div><dt>{{localize "PF2E_MARKET_FORGE.Cart.Available"}}</dt><dd>{{cart.balanceLabel}}</dd></div>
-                <div><dt>{{localize "PF2E_MARKET_FORGE.Cart.Total"}}</dt><dd><strong>{{cart.quotedTotalLabel}}</strong></dd></div>
-                {{#if cart.affordable}}<div><dt>{{localize "PF2E_MARKET_FORGE.Cart.Remaining"}}</dt><dd>{{cart.remainingLabel}}</dd></div>{{else}}<div class="market-forge-deficit"><dt>{{localize "PF2E_MARKET_FORGE.Cart.Missing"}}</dt><dd>{{cart.deficitLabel}}</dd></div>{{/if}}
+                {{#if cart.isSell}}
+                  <div><dt>{{localize "PF2E_MARKET_FORGE.Sell.ItemSource"}}</dt><dd>{{cart.itemActorName}}</dd></div>
+                  <div><dt>{{localize "PF2E_MARKET_FORGE.Sell.ProceedsTarget"}}</dt><dd>{{cart.currencyActorName}}</dd></div>
+                  <div><dt>{{localize "PF2E_MARKET_FORGE.Sell.CurrentBalance"}}</dt><dd>{{cart.balanceLabel}}</dd></div>
+                  <div><dt>{{localize "PF2E_MARKET_FORGE.Sell.TotalProceeds"}}</dt><dd><strong>{{cart.quotedTotalLabel}}</strong></dd></div>
+                  <div><dt>{{localize "PF2E_MARKET_FORGE.Sell.BalanceAfter"}}</dt><dd>{{cart.remainingLabel}}</dd></div>
+                {{else}}
+                  <div><dt>{{localize "PF2E_MARKET_FORGE.Cart.Recipient"}}</dt><dd>{{cart.itemActorName}}</dd></div>
+                  <div><dt>{{localize "PF2E_MARKET_FORGE.Cart.PaymentSource"}}</dt><dd>{{cart.currencyActorName}}</dd></div>
+                  <div><dt>{{localize "PF2E_MARKET_FORGE.Cart.Available"}}</dt><dd>{{cart.balanceLabel}}</dd></div>
+                  <div><dt>{{localize "PF2E_MARKET_FORGE.Cart.Total"}}</dt><dd><strong>{{cart.quotedTotalLabel}}</strong></dd></div>
+                  {{#if cart.affordable}}<div><dt>{{localize "PF2E_MARKET_FORGE.Cart.Remaining"}}</dt><dd>{{cart.remainingLabel}}</dd></div>{{else}}<div class="market-forge-deficit"><dt>{{localize "PF2E_MARKET_FORGE.Cart.Missing"}}</dt><dd>{{cart.deficitLabel}}</dd></div>{{/if}}
+                {{/if}}
               </dl>
-              {{#unless cart.affordable}}<div class="market-forge-warning"><i class="fa-solid fa-coins"></i>{{localize "PF2E_MARKET_FORGE.Cart.InsufficientFunds"}}</div>{{/unless}}
+              {{#if cart.isBuy}}{{#unless cart.affordable}}<div class="market-forge-warning"><i class="fa-solid fa-coins"></i>{{localize "PF2E_MARKET_FORGE.Cart.InsufficientFunds"}}</div>{{/unless}}{{/if}}
               <div class="market-forge-checkout-actions">
-                <button type="button" class="market-forge-dry-run" data-market-dry-run {{#unless cart.canDryRun}}disabled{{/unless}}><i class="fa-solid fa-clipboard-check"></i>{{localize "PF2E_MARKET_FORGE.Cart.ValidateCheckout"}}</button>
-                <button type="button" class="market-forge-purchase" data-market-checkout {{#unless cart.canCheckout}}disabled{{/unless}}><i class="fa-solid fa-coins"></i>{{localize "PF2E_MARKET_FORGE.Cart.CompletePurchase"}}</button>
+                {{#if cart.isSell}}
+                  <button type="button" class="market-forge-dry-run" data-market-dry-run {{#unless cart.canDryRun}}disabled{{/unless}}><i class="fa-solid fa-clipboard-check"></i>{{localize "PF2E_MARKET_FORGE.Sell.ValidateCheckout"}}</button>
+                  <button type="button" class="market-forge-purchase" data-market-checkout {{#unless cart.canCheckout}}disabled{{/unless}}><i class="fa-solid fa-hand-holding-dollar"></i>{{localize "PF2E_MARKET_FORGE.Sell.CompleteSale"}}</button>
+                {{else}}
+                  <button type="button" class="market-forge-dry-run" data-market-dry-run {{#unless cart.canDryRun}}disabled{{/unless}}><i class="fa-solid fa-clipboard-check"></i>{{localize "PF2E_MARKET_FORGE.Cart.ValidateCheckout"}}</button>
+                  <button type="button" class="market-forge-purchase" data-market-checkout {{#unless cart.canCheckout}}disabled{{/unless}}><i class="fa-solid fa-coins"></i>{{localize "PF2E_MARKET_FORGE.Cart.CompletePurchase"}}</button>
+                {{/if}}
               </div>
-              <small>{{localize "PF2E_MARKET_FORGE.Cart.CheckoutHintM4"}}</small>
+              <small>{{#if cart.isSell}}{{localize "PF2E_MARKET_FORGE.Sell.CheckoutHint"}}{{else}}{{localize "PF2E_MARKET_FORGE.Cart.CheckoutHintM4"}}{{/if}}</small>
 
               {{#if checkout}}
                 <div class="market-forge-checkout-result {{checkout.status}}">
-                  {{#if checkout.valid}}<strong><i class="fa-solid fa-circle-check"></i> {{localize "PF2E_MARKET_FORGE.Cart.ValidationSuccess"}}</strong>{{/if}}
-                  {{#if checkout.invalid}}<strong><i class="fa-solid fa-circle-xmark"></i> {{localize "PF2E_MARKET_FORGE.Cart.ValidationFailed"}}</strong>{{/if}}
-                  {{#if checkout.error}}<strong><i class="fa-solid fa-triangle-exclamation"></i> {{localize "PF2E_MARKET_FORGE.Cart.ValidationError"}}</strong>{{/if}}
-                  {{#if checkout.running}}<strong><i class="fa-solid fa-spinner fa-spin"></i> {{localize "PF2E_MARKET_FORGE.Cart.PurchaseRunning"}}</strong>{{/if}}
-                  {{#if checkout.completed}}<strong><i class="fa-solid fa-bag-shopping"></i> {{localize "PF2E_MARKET_FORGE.Cart.PurchaseCompleted"}}</strong>{{/if}}
-                  {{#if checkout.rolledBack}}<strong><i class="fa-solid fa-rotate-left"></i> {{localize "PF2E_MARKET_FORGE.Cart.PurchaseRolledBack"}}</strong>{{/if}}
-                  {{#if checkout.rollbackFailed}}<strong><i class="fa-solid fa-triangle-exclamation"></i> {{localize "PF2E_MARKET_FORGE.Cart.RollbackFailed"}}</strong>{{/if}}
-                  <span>{{localize "PF2E_MARKET_FORGE.Cart.AuthoritativeTotal"}}: {{checkout.totalLabel}}</span>
-                  {{#if checkout.remainingLabel}}<span>{{localize "PF2E_MARKET_FORGE.Cart.Remaining"}}: {{checkout.remainingLabel}}</span>{{/if}}
-                  {{#if checkout.deficitLabel}}<span>{{localize "PF2E_MARKET_FORGE.Cart.Missing"}}: {{checkout.deficitLabel}}</span>{{/if}}
+                  {{#if checkout.isSell}}
+                    {{#if checkout.valid}}<strong><i class="fa-solid fa-circle-check"></i> {{localize "PF2E_MARKET_FORGE.Sell.ValidationSuccess"}}</strong>{{/if}}
+                    {{#if checkout.invalid}}<strong><i class="fa-solid fa-circle-xmark"></i> {{localize "PF2E_MARKET_FORGE.Sell.ValidationFailed"}}</strong>{{/if}}
+                    {{#if checkout.error}}<strong><i class="fa-solid fa-triangle-exclamation"></i> {{localize "PF2E_MARKET_FORGE.Sell.ValidationError"}}</strong>{{/if}}
+                    {{#if checkout.running}}<strong><i class="fa-solid fa-spinner fa-spin"></i> {{localize "PF2E_MARKET_FORGE.Sell.Running"}}</strong>{{/if}}
+                    {{#if checkout.completed}}<strong><i class="fa-solid fa-hand-holding-dollar"></i> {{localize "PF2E_MARKET_FORGE.Sell.Completed"}}</strong>{{/if}}
+                    {{#if checkout.rolledBack}}<strong><i class="fa-solid fa-rotate-left"></i> {{localize "PF2E_MARKET_FORGE.Sell.RolledBack"}}</strong>{{/if}}
+                    {{#if checkout.rollbackFailed}}<strong><i class="fa-solid fa-triangle-exclamation"></i> {{localize "PF2E_MARKET_FORGE.Cart.RollbackFailed"}}</strong>{{/if}}
+                    <span>{{localize "PF2E_MARKET_FORGE.Sell.AuthoritativeProceeds"}}: {{checkout.totalLabel}}</span>
+                    {{#if checkout.remainingLabel}}<span>{{localize "PF2E_MARKET_FORGE.Sell.BalanceAfter"}}: {{checkout.remainingLabel}}</span>{{/if}}
+                  {{else}}
+                    {{#if checkout.valid}}<strong><i class="fa-solid fa-circle-check"></i> {{localize "PF2E_MARKET_FORGE.Cart.ValidationSuccess"}}</strong>{{/if}}
+                    {{#if checkout.invalid}}<strong><i class="fa-solid fa-circle-xmark"></i> {{localize "PF2E_MARKET_FORGE.Cart.ValidationFailed"}}</strong>{{/if}}
+                    {{#if checkout.error}}<strong><i class="fa-solid fa-triangle-exclamation"></i> {{localize "PF2E_MARKET_FORGE.Cart.ValidationError"}}</strong>{{/if}}
+                    {{#if checkout.running}}<strong><i class="fa-solid fa-spinner fa-spin"></i> {{localize "PF2E_MARKET_FORGE.Cart.PurchaseRunning"}}</strong>{{/if}}
+                    {{#if checkout.completed}}<strong><i class="fa-solid fa-bag-shopping"></i> {{localize "PF2E_MARKET_FORGE.Cart.PurchaseCompleted"}}</strong>{{/if}}
+                    {{#if checkout.rolledBack}}<strong><i class="fa-solid fa-rotate-left"></i> {{localize "PF2E_MARKET_FORGE.Cart.PurchaseRolledBack"}}</strong>{{/if}}
+                    {{#if checkout.rollbackFailed}}<strong><i class="fa-solid fa-triangle-exclamation"></i> {{localize "PF2E_MARKET_FORGE.Cart.RollbackFailed"}}</strong>{{/if}}
+                    <span>{{localize "PF2E_MARKET_FORGE.Cart.AuthoritativeTotal"}}: {{checkout.totalLabel}}</span>
+                    {{#if checkout.remainingLabel}}<span>{{localize "PF2E_MARKET_FORGE.Cart.Remaining"}}: {{checkout.remainingLabel}}</span>{{/if}}
+                    {{#if checkout.deficitLabel}}<span>{{localize "PF2E_MARKET_FORGE.Cart.Missing"}}: {{checkout.deficitLabel}}</span>{{/if}}
+                  {{/if}}
                   {{#if checkout.errorLabels.length}}<ul>{{#each checkout.errorLabels}}<li>{{this}}</li>{{/each}}</ul>{{/if}}
                   {{#if checkout.warningLabels.length}}<ul class="market-forge-warning-list">{{#each checkout.warningLabels}}<li>{{this}}</li>{{/each}}</ul>{{/if}}
                 </div>
@@ -218,11 +309,11 @@
             </aside>
           </div>
         {{else}}
-          <div class="market-forge-empty-state compact"><i class="fa-solid fa-cart-arrow-down"></i><h3>{{localize "PF2E_MARKET_FORGE.Cart.EmptyTitle"}}</h3><p>{{localize "PF2E_MARKET_FORGE.Cart.EmptyTextM4"}}</p></div>
+          <div class="market-forge-empty-state compact"><i class="fa-solid fa-cart-arrow-down"></i><h3>{{localize "PF2E_MARKET_FORGE.Cart.EmptyTitle"}}</h3><p>{{#if cart.isSell}}{{localize "PF2E_MARKET_FORGE.Sell.EmptyCartText"}}{{else}}{{localize "PF2E_MARKET_FORGE.Cart.EmptyTextM4"}}{{/if}}</p></div>
         {{/if}}
       </section>
     {{/if}}
   </main>
 
-  <footer class="market-forge-footer-note"><i class="fa-solid fa-shield-halved"></i> {{localize "PF2E_MARKET_FORGE.Milestone4Footer"}}</footer>
+  <footer class="market-forge-footer-note"><i class="fa-solid fa-shield-halved"></i> {{localize "PF2E_MARKET_FORGE.Milestone5Footer"}}</footer>
 </div>

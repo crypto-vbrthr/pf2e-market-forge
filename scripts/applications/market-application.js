@@ -2,6 +2,7 @@ import { CartService } from "../cart/cart-service.js";
 import { CatalogService } from "../catalog/catalog-service.js";
 import { ItemPreviewService } from "../catalog/preview-service.js";
 import { MODULE_ID } from "../core/constants.js";
+import { SaleInventoryService } from "../inventory/sale-inventory-service.js";
 import { resolveMarketMaximumForActor } from "../market/market-level-context.js";
 import { createDefaultMarketProfile } from "../market/profile-defaults.js";
 import { CurrencyAdapter } from "../pf2e/currency-adapter.js";
@@ -45,6 +46,7 @@ export class MarketApplication extends HandlebarsApplicationMixin(ApplicationV2)
   #priceService;
   #currencyAdapter;
   #inventoryAdapter;
+  #saleInventoryService;
   #receiptService;
   #transactionService;
   #catalogFilters = createCatalogViewState();
@@ -65,6 +67,7 @@ export class MarketApplication extends HandlebarsApplicationMixin(ApplicationV2)
     priceService = null,
     currencyAdapter = null,
     inventoryAdapter = null,
+    saleInventoryService = null,
     receiptService = null,
     transactionService = null
   } = {}) {
@@ -83,11 +86,16 @@ export class MarketApplication extends HandlebarsApplicationMixin(ApplicationV2)
     };
     this.#currencyAdapter = currencyAdapter ?? new CurrencyAdapter({ actorProvider });
     this.#inventoryAdapter = inventoryAdapter ?? new InventoryAdapter({ actorProvider });
+    this.#saleInventoryService = saleInventoryService ?? new SaleInventoryService({ inventoryAdapter: this.#inventoryAdapter });
+    if (this.#activeTab === "sell") this.#cartService.setActiveDirection("sell");
     this.#receiptService = receiptService ?? new ReceiptService({ actorProvider });
     this.#transactionService = transactionService ?? new TransactionService({
       profileProvider: async (profileId) => profileId === this.#profile.id ? this.#profile : null,
-      productResolver: async (product, { profile, maximumItemLevel, authoritative }) => {
+      productResolver: async (product, { profile, maximumItemLevel, authoritative, direction, itemActorUuid }) => {
         if (product.kind !== "item") return null;
+        if (direction === "sell" || product.inventoryItemUuid) {
+          return this.#saleInventoryService.getEntry(itemActorUuid, product.inventoryItemUuid);
+        }
         return this.#catalogService.getEntry(product.sourceUuid, { profile, maximumItemLevel, fresh: authoritative });
       },
       priceService: this.#priceService,
@@ -132,12 +140,22 @@ export class MarketApplication extends HandlebarsApplicationMixin(ApplicationV2)
 
     const preparedEntries = catalog.entries.map((entry) => this.#prepareCatalogEntry(entry));
     const cartState = this.#cartService.getState();
-    const buyLines = cartState.buyLines.map((line) => this.#prepareCartLine(line));
-    const cartCount = cartState.buyLines.reduce((sum, line) => sum + line.quantity, 0);
-    const quotedTotal = this.#cartService.getQuotedTotal("buy");
-    const affordable = balance >= quotedTotal;
-    const remaining = affordable ? balance - quotedTotal : 0;
-    const deficit = affordable ? 0 : quotedTotal - balance;
+    const activeDirection = cartState.activeDirection;
+    let saleInventoryEntries = [];
+    if (actor && (tabs.sell.active || (tabs.cart.active && activeDirection === "sell"))) {
+      saleInventoryEntries = await this.#saleInventoryService.list(actor.uuid);
+    }
+    const preparedSaleEntries = saleInventoryEntries.map((entry) => this.#prepareSaleEntry(entry));
+
+    const activeCartLines = activeDirection === "sell" ? cartState.sellLines : cartState.buyLines;
+    const preparedCartLines = activeCartLines.map((line) => this.#prepareCartLine(line));
+    const buyCount = cartState.buyLines.reduce((sum, line) => sum + line.quantity, 0);
+    const sellCount = cartState.sellLines.reduce((sum, line) => sum + line.quantity, 0);
+    const cartCount = buyCount + sellCount;
+    const quotedTotal = this.#cartService.getQuotedTotal(activeDirection);
+    const affordable = activeDirection === "sell" || balance >= quotedTotal;
+    const remaining = activeDirection === "sell" ? balance + quotedTotal : Math.max(0, balance - quotedTotal);
+    const deficit = activeDirection === "buy" && !affordable ? quotedTotal - balance : 0;
 
     return Object.assign(context, {
       actor: actor ? {
@@ -166,7 +184,7 @@ export class MarketApplication extends HandlebarsApplicationMixin(ApplicationV2)
       sellTab: tabs.sell,
       cartTab: tabs.cart,
       inventoryCount: this.#physicalItemCount(actor),
-      milestone: "4",
+      milestone: "5",
       readOnlyMilestone: false,
       catalog: {
         ...catalog,
@@ -177,11 +195,22 @@ export class MarketApplication extends HandlebarsApplicationMixin(ApplicationV2)
       },
       catalogFilters: this.#catalogFilters,
       catalogOptions: this.#catalogOptions(catalog.facets),
+      saleInventory: {
+        entries: preparedSaleEntries,
+        hasEntries: preparedSaleEntries.length > 0,
+        count: preparedSaleEntries.length,
+        sellableCount: preparedSaleEntries.filter((entry) => entry.available).length
+      },
       cart: {
-        lines: buyLines,
-        hasLines: buyLines.length > 0,
+        direction: activeDirection,
+        isBuy: activeDirection === "buy",
+        isSell: activeDirection === "sell",
+        lines: preparedCartLines,
+        hasLines: preparedCartLines.length > 0,
         count: cartCount,
-        lineCount: buyLines.length,
+        buyCount,
+        sellCount,
+        lineCount: preparedCartLines.length,
         quotedTotal,
         quotedTotalLabel: this.#formatCopper(quotedTotal),
         balance,
@@ -191,8 +220,8 @@ export class MarketApplication extends HandlebarsApplicationMixin(ApplicationV2)
         deficitLabel: this.#formatCopper(deficit),
         itemActorName: actor?.name ?? game.i18n.localize("PF2E_MARKET_FORGE.NotAvailable"),
         currencyActorName: actor?.name ?? game.i18n.localize("PF2E_MARKET_FORGE.NotAvailable"),
-        canDryRun: Boolean(actor && buyLines.length && !this.#checkoutBusy),
-        canCheckout: Boolean(actor && buyLines.length && affordable && !this.#checkoutBusy)
+        canDryRun: Boolean(actor && preparedCartLines.length && !this.#checkoutBusy),
+        canCheckout: Boolean(actor && preparedCartLines.length && affordable && !this.#checkoutBusy)
       },
       checkout: this.#prepareCheckoutState(),
       marketLevelContext: {
@@ -208,6 +237,9 @@ export class MarketApplication extends HandlebarsApplicationMixin(ApplicationV2)
     for (const button of this.element.querySelectorAll("[data-market-tab]")) {
       button.addEventListener("click", () => {
         this.#activeTab = normalizeMarketTab(button.dataset.marketTab, this.#activeTab);
+        if (this.#activeTab === "buy") this.#cartService.setActiveDirection("buy");
+        if (this.#activeTab === "sell") this.#cartService.setActiveDirection("sell");
+        this.#checkoutState = null;
         this.render();
       });
     }
@@ -253,14 +285,29 @@ export class MarketApplication extends HandlebarsApplicationMixin(ApplicationV2)
       button.addEventListener("click", async () => this.#addCatalogItem(button.dataset.marketAddItem));
     }
 
+    for (const button of this.element.querySelectorAll("[data-market-add-sale]")) {
+      button.addEventListener("click", async () => this.#addSaleItem(button.dataset.marketAddSale));
+    }
+
+    for (const button of this.element.querySelectorAll("[data-cart-direction]")) {
+      button.addEventListener("click", () => {
+        this.#cartService.setActiveDirection(button.dataset.cartDirection);
+        this.#checkoutState = null;
+        this.render();
+      });
+    }
+
     for (const button of this.element.querySelectorAll("[data-cart-adjust-line]")) {
       button.addEventListener("click", () => {
         const lineId = button.dataset.cartAdjustLine;
+        const direction = button.dataset.cartDirection ?? this.#cartService.getState().activeDirection;
         const delta = Number(button.dataset.delta ?? 0);
         const state = this.#cartService.getState();
-        const line = state.buyLines.find((entry) => entry.id === lineId);
+        const lines = direction === "sell" ? state.sellLines : state.buyLines;
+        const line = lines.find((entry) => entry.id === lineId);
         if (!line || !Number.isSafeInteger(delta)) return;
-        this.#cartService.setQuantity("buy", lineId, Math.max(1, line.quantity + delta));
+        const maximum = direction === "sell" ? Math.max(1, Number(line.product.availableQuantity ?? 999)) : 999;
+        this.#cartService.setQuantity(direction, lineId, Math.max(1, Math.min(maximum, line.quantity + delta)));
         this.#cartChanged();
         this.render();
       });
@@ -269,8 +316,10 @@ export class MarketApplication extends HandlebarsApplicationMixin(ApplicationV2)
     for (const input of this.element.querySelectorAll("[data-cart-quantity-line]")) {
       input.addEventListener("change", () => {
         const lineId = input.dataset.cartQuantityLine;
-        const quantity = Math.max(1, Math.min(999, Math.trunc(Number(input.value) || 1)));
-        this.#cartService.setQuantity("buy", lineId, quantity);
+        const direction = input.dataset.cartDirection ?? this.#cartService.getState().activeDirection;
+        const maximum = Math.max(1, Math.trunc(Number(input.max) || 999));
+        const quantity = Math.max(1, Math.min(maximum, Math.trunc(Number(input.value) || 1)));
+        this.#cartService.setQuantity(direction, lineId, quantity);
         this.#cartChanged();
         this.render();
       });
@@ -278,14 +327,16 @@ export class MarketApplication extends HandlebarsApplicationMixin(ApplicationV2)
 
     for (const button of this.element.querySelectorAll("[data-cart-remove-line]")) {
       button.addEventListener("click", () => {
-        this.#cartService.remove("buy", button.dataset.cartRemoveLine);
+        const direction = button.dataset.cartDirection ?? this.#cartService.getState().activeDirection;
+        this.#cartService.remove(direction, button.dataset.cartRemoveLine);
         this.#cartChanged();
         this.render();
       });
     }
 
     this.element.querySelector("[data-cart-clear]")?.addEventListener("click", () => {
-      this.#cartService.clear("buy");
+      const direction = this.#cartService.getState().activeDirection;
+      this.#cartService.clear(direction);
       this.#cartChanged();
       this.render();
     });
@@ -327,6 +378,7 @@ export class MarketApplication extends HandlebarsApplicationMixin(ApplicationV2)
     }
 
     const quote = this.#priceService.quotePurchase(entry, quantity, this.#profile);
+    this.#cartService.setActiveDirection("buy");
     this.#cartService.add({
       direction: "buy",
       quantity,
@@ -344,31 +396,69 @@ export class MarketApplication extends HandlebarsApplicationMixin(ApplicationV2)
     await this.render();
   }
 
+  async #addSaleItem(uuid) {
+    if (!uuid || !this.#actor) return;
+    const quantityInput = Array.from(this.element.querySelectorAll("[data-market-sale-quantity]")).find(
+      (input) => input.dataset.marketSaleQuantity === uuid
+    );
+    const entry = await this.#saleInventoryService.getEntry(this.#actor.uuid, uuid);
+    if (!entry?.availability?.available) {
+      ui.notifications?.warn?.(game.i18n.localize("PF2E_MARKET_FORGE.Sell.ItemUnavailable"));
+      return;
+    }
+
+    const quantity = Math.max(1, Math.min(entry.quantity, Math.trunc(Number(quantityInput?.value) || 1)));
+    const quote = this.#priceService.quoteSale(entry, quantity, this.#profile);
+    this.#cartService.setActiveDirection("sell");
+    this.#cartService.add({
+      direction: "sell",
+      quantity,
+      quote,
+      product: {
+        kind: "item",
+        inventoryItemUuid: entry.uuid,
+        name: entry.name,
+        img: entry.img,
+        level: entry.level,
+        availableQuantity: entry.quantity
+      }
+    });
+    this.#cartChanged();
+    ui.notifications?.info?.(game.i18n.format("PF2E_MARKET_FORGE.Sell.Added", { quantity, name: entry.name }));
+    await this.render();
+  }
+
   async #runCheckoutDryRun() {
     const actor = this.#actor;
     const state = this.#cartService.getState();
-    if (!actor || state.buyLines.length === 0) return;
+    const direction = state.activeDirection;
+    const lines = direction === "sell" ? state.sellLines : state.buyLines;
+    if (!actor || lines.length === 0) return;
 
-    const request = this.#buildCheckoutRequest(state.buyLines);
+    const request = this.#buildCheckoutRequest(lines, direction);
 
     try {
       const maximumItemLevel = this.#resolveLevelContext().result?.maximumItemLevel ?? null;
       const { plan, validation } = await this.#transactionService.dryRun(request, { maximumItemLevel });
       this.#checkoutState = {
+        direction,
         status: validation.valid ? "valid" : "invalid",
         total: plan.total,
-        balance: validation.availableBalance ?? 0,
+        balance: validation.availableBalance ?? await this.#safeBalance(actor.uuid),
         remaining: validation.remainingBalance ?? null,
-        errors: validation.errors
+        errors: validation.errors,
+        warnings: validation.warnings ?? []
       };
     } catch (error) {
       console.error(`${MODULE_ID} | Checkout dry run failed`, error);
       this.#checkoutState = {
+        direction,
         status: "error",
         total: 0,
         balance: await this.#safeBalance(actor.uuid),
         remaining: null,
-        errors: [error instanceof Error ? error.message : String(error)]
+        errors: [error instanceof Error ? error.message : String(error)],
+        warnings: []
       };
     }
 
@@ -379,11 +469,21 @@ export class MarketApplication extends HandlebarsApplicationMixin(ApplicationV2)
     if (this.#checkoutBusy) return;
     const actor = this.#actor;
     const state = this.#cartService.getState();
-    if (!actor || state.buyLines.length === 0) return;
+    const direction = state.activeDirection;
+    const lines = direction === "sell" ? state.sellLines : state.buyLines;
+    if (!actor || lines.length === 0) return;
 
     this.#checkoutBusy = true;
-    const request = this.#buildCheckoutRequest(state.buyLines);
-    this.#checkoutState = { status: "running", total: this.#cartService.getQuotedTotal("buy"), balance: await this.#safeBalance(actor.uuid), remaining: null, errors: [] };
+    const request = this.#buildCheckoutRequest(lines, direction);
+    this.#checkoutState = {
+      direction,
+      status: "running",
+      total: this.#cartService.getQuotedTotal(direction),
+      balance: await this.#safeBalance(actor.uuid),
+      remaining: null,
+      errors: [],
+      warnings: []
+    };
     await this.render();
 
     try {
@@ -392,8 +492,9 @@ export class MarketApplication extends HandlebarsApplicationMixin(ApplicationV2)
       const balance = await this.#safeBalance(actor.uuid);
 
       if (result.status === "completed") {
-        this.#cartService.clear("buy");
+        this.#cartService.clear(direction);
         this.#checkoutState = {
+          direction,
           status: "completed",
           total: result.total,
           balance,
@@ -402,9 +503,11 @@ export class MarketApplication extends HandlebarsApplicationMixin(ApplicationV2)
           warnings: result.warnings ?? [],
           transactionId: result.transactionId
         };
-        ui.notifications?.info?.(game.i18n.format("PF2E_MARKET_FORGE.Cart.PurchaseSuccess", { total: this.#formatCopper(result.total) }));
+        const key = direction === "sell" ? "PF2E_MARKET_FORGE.Sell.Success" : "PF2E_MARKET_FORGE.Cart.PurchaseSuccess";
+        ui.notifications?.info?.(game.i18n.format(key, { total: this.#formatCopper(result.total) }));
       } else {
         this.#checkoutState = {
+          direction,
           status: result.status,
           total: result.total ?? 0,
           balance,
@@ -416,12 +519,15 @@ export class MarketApplication extends HandlebarsApplicationMixin(ApplicationV2)
         };
         const key = result.status === "rollback-failed"
           ? "PF2E_MARKET_FORGE.Cart.RollbackFailedNotification"
-          : "PF2E_MARKET_FORGE.Cart.PurchaseFailedNotification";
+          : direction === "sell"
+            ? "PF2E_MARKET_FORGE.Sell.FailedNotification"
+            : "PF2E_MARKET_FORGE.Cart.PurchaseFailedNotification";
         ui.notifications?.error?.(game.i18n.localize(key));
       }
     } catch (error) {
-      console.error(`${MODULE_ID} | Purchase checkout failed`, error);
+      console.error(`${MODULE_ID} | ${direction === "sell" ? "Sale" : "Purchase"} checkout failed`, error);
       this.#checkoutState = {
+        direction,
         status: "error",
         total: 0,
         balance: await this.#safeBalance(actor.uuid),
@@ -430,7 +536,10 @@ export class MarketApplication extends HandlebarsApplicationMixin(ApplicationV2)
         warnings: [],
         cause: error instanceof Error ? error.message : String(error)
       };
-      ui.notifications?.error?.(game.i18n.localize("PF2E_MARKET_FORGE.Cart.PurchaseFailedNotification"));
+      const key = direction === "sell"
+        ? "PF2E_MARKET_FORGE.Sell.FailedNotification"
+        : "PF2E_MARKET_FORGE.Cart.PurchaseFailedNotification";
+      ui.notifications?.error?.(game.i18n.localize(key));
     } finally {
       this.#checkoutBusy = false;
     }
@@ -438,10 +547,10 @@ export class MarketApplication extends HandlebarsApplicationMixin(ApplicationV2)
     await this.render();
   }
 
-  #buildCheckoutRequest(lines) {
+  #buildCheckoutRequest(lines, direction = this.#cartService.getState().activeDirection) {
     const actor = this.#actor;
     return {
-      direction: "buy",
+      direction,
       profileId: this.#profile.id,
       itemActorUuid: actor.uuid,
       currencyActorUuid: actor.uuid,
@@ -464,6 +573,8 @@ export class MarketApplication extends HandlebarsApplicationMixin(ApplicationV2)
     const remaining = Number.isSafeInteger(state.remaining) ? state.remaining : null;
     return {
       ...state,
+      isBuy: state.direction !== "sell",
+      isSell: state.direction === "sell",
       valid: state.status === "valid",
       invalid: state.status === "invalid" || state.status === "failed",
       error: state.status === "error",
@@ -524,13 +635,40 @@ export class MarketApplication extends HandlebarsApplicationMixin(ApplicationV2)
     };
   }
 
+  #prepareSaleEntry(entry) {
+    const preview = this.#previews.get(entry.uuid) ?? null;
+    const expanded = this.#expandedItems.has(entry.uuid);
+    const quote = this.#priceService.quoteSale(entry, 1, this.#profile);
+    const availabilityReasons = (entry.availability?.reasons ?? []).map((reason) => this.#saleReasonLabel(reason));
+
+    return {
+      ...entry,
+      priceLabel: this.#formatCopper(quote.unitPrice),
+      basePriceLabel: this.#formatCopper(entry.baseUnitPrice),
+      ruleLabel: game.i18n.localize(`PF2E_MARKET_FORGE.PriceRule.${quote.rule}`),
+      rarityLabel: game.i18n.localize(`PF2E_MARKET_FORGE.Rarity.${entry.rarity}`),
+      typeLabel: this.#itemTypeLabel(entry.itemType),
+      expanded,
+      preview: preview ? {
+        ...preview,
+        traitLabels: preview.traits.map((trait) => this.#traitLabel(trait))
+      } : null,
+      previewError: this.#previewErrors.get(entry.uuid) ?? null,
+      available: entry.availability?.available === true,
+      availabilityReasons,
+      availabilityReasonText: availabilityReasons.join(" · ")
+    };
+  }
+
   #prepareCartLine(line) {
-    const uuid = line.product.sourceUuid ?? null;
+    const uuid = line.product.sourceUuid ?? line.product.inventoryItemUuid ?? null;
     const preview = uuid ? this.#previews.get(uuid) ?? null : null;
+    const maximum = line.direction === "sell" ? Math.max(1, Number(line.product.availableQuantity ?? line.quantity)) : 999;
     return {
       ...line,
       unitPriceLabel: this.#formatCopper(line.quotedUnitPrice),
       totalPriceLabel: this.#formatCopper(line.quotedTotalPrice),
+      maxQuantity: maximum,
       expanded: uuid ? this.#expandedItems.has(uuid) : false,
       previewUuid: uuid,
       preview: preview ? {
@@ -581,6 +719,12 @@ export class MarketApplication extends HandlebarsApplicationMixin(ApplicationV2)
       });
     }
     return game.i18n.localize(`PF2E_MARKET_FORGE.Availability.${reason}`);
+  }
+
+  #saleReasonLabel(reason) {
+    const key = `PF2E_MARKET_FORGE.SellReason.${reason}`;
+    const localized = game.i18n.localize(key);
+    return localized === key ? String(reason) : localized;
   }
 
   #transactionErrorLabel(error) {
