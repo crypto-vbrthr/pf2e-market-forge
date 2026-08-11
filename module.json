@@ -1,0 +1,42 @@
+{
+  "id": "pf2e-market-forge",
+  "title": "PF2E Market Forge",
+  "description": "Comfortable rules-aware buying and selling for Pathfinder 2e, including party inventory support and spell-item generation.",
+  "version": "0.0.1",
+  "authors": [
+    {
+      "name": "Bully"
+    }
+  ],
+  "compatibility": {
+    "minimum": "14",
+    "verified": "14.365",
+    "maximum": "14"
+  },
+  "relationships": {
+    "requires": [
+      {
+        "id": "pf2e",
+        "type": "system"
+      }
+    ]
+  },
+  "esmodules": [
+    "scripts/main.js"
+  ],
+  "styles": [
+    "styles/market-forge.css"
+  ],
+  "languages": [
+    {
+      "lang": "de",
+      "name": "Deutsch",
+      "path": "lang/de.json"
+    },
+    {
+      "lang": "en",
+      "name": "English",
+      "path": "lang/en.json"
+    }
+  ]
+}

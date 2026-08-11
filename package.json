@@ -1,0 +1,10 @@
+{
+  "name": "pf2e-market-forge",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "description": "Contract-test scaffold for PF2E Market Forge",
+  "scripts": {
+    "test": "node --test tests/*.test.js"
+  }
+}
