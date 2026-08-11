@@ -29,3 +29,16 @@
 - Initial installable module skeleton.
 - v0.1 domain contracts and service boundaries.
 - Pure contract tests for money, profiles, availability, pricing, cart, spells, checkout plans, and adapters.
+
+## 0.0.4 - Milestone 3
+
+- Activated the purchase cart for regular catalog items.
+- Added per-catalog quantity selection and automatic merging of identical cart lines.
+- Added cart quantity editing, line removal, clearing, and live total calculation.
+- Connected displayed purchase prices to the central `PriceService`.
+- Added read-only PF2e currency balance access through `CurrencyAdapter`.
+- Added recipient/payment-source summary for the actor that opened Market Forge.
+- Implemented authoritative purchase-plan preparation and checkout dry-run validation.
+- Checkout now reloads products from the configured market sources and recalculates prices instead of trusting cart quotes.
+- Added insufficient-funds validation and dry-run result reporting.
+- Kept all inventory and currency mutations disabled until Milestone 4.

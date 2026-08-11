@@ -26,11 +26,12 @@ globalThis.game = {
     localize: (key) => key,
     format: (key, data = {}) => `${key}:${JSON.stringify(data)}`
   },
-  actors: { party: null }
+  actors: { party: null },
+  user: { id: "User.test" }
 };
 
 describe("ApplicationV2 shell", () => {
-  it("loads Milestone 2 catalog context with the Foundry v14 ApplicationV2 API contract", async () => {
+  it("loads Milestone 3 catalog and empty purchase-cart context", async () => {
     const { MarketApplication } = await import("../scripts/applications/market-application.js");
     let searched = false;
     const app = new MarketApplication({
@@ -51,15 +52,20 @@ describe("ApplicationV2 shell", () => {
             facets: { categories: [], levels: [], rarities: [], sources: [] },
             sources: []
           };
-        }
+        },
+        async getEntry() { return null; }
       },
       previewService: { getPreview: async () => null, openSheet: async () => false }
     });
     const context = await app._prepareContext({});
     assert.equal(context.actor.name, "Test Hero");
+    assert.equal(context.actor.currency, "10 PF2E_MARKET_FORGE.Coins.gp");
     assert.equal(context.buyTab.active, true);
     assert.equal(context.profile.maximumItemLevel, 5);
     assert.equal(context.catalog.hasEntries, false);
+    assert.equal(context.cart.count, 0);
+    assert.equal(context.cart.quotedTotal, 0);
+    assert.equal(context.milestone, "3");
     assert.equal(searched, true);
     assert.equal(MarketApplication.PARTS.main.template, "modules/pf2e-market-forge/templates/market.hbs");
   });

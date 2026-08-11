@@ -450,3 +450,200 @@
     padding-left: 0.9rem;
   }
 }
+
+/* Milestone 3 purchase cart and dry-run checkout */
+.market-forge-item-main {
+  grid-template-columns: 30px 42px minmax(220px, 1fr) 88px 112px minmax(190px, 220px);
+}
+
+.market-forge-buy-controls {
+  align-items: center;
+  display: grid;
+  gap: 0.4rem;
+  grid-template-columns: 56px minmax(0, 1fr);
+}
+
+.market-forge-buy-controls input,
+.market-forge-quantity-stepper input {
+  min-width: 0;
+  text-align: center;
+}
+
+.market-forge-cart-layout {
+  display: grid;
+  gap: 0.8rem;
+  grid-template-columns: minmax(0, 1fr) minmax(260px, 320px);
+  margin-top: 0.8rem;
+}
+
+.market-forge-cart-lines {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+
+.market-forge-cart-line {
+  border: 1px solid var(--color-border-light-primary, #777);
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.market-forge-cart-line-main {
+  align-items: center;
+  display: grid;
+  gap: 0.5rem;
+  grid-template-columns: 30px 42px minmax(180px, 1fr) 130px 110px 32px;
+  padding: 0.45rem 0.55rem;
+}
+
+.market-forge-quantity-stepper {
+  align-items: center;
+  display: grid;
+  gap: 0.25rem;
+  grid-template-columns: 30px minmax(42px, 1fr) 30px;
+}
+
+.market-forge-quantity-stepper button,
+.market-forge-icon-button {
+  align-items: center;
+  display: inline-flex;
+  height: 30px;
+  justify-content: center;
+  min-width: 30px;
+  padding: 0;
+}
+
+.market-forge-line-total {
+  text-align: right;
+}
+
+.market-forge-cart-preview {
+  padding-left: 4.7rem;
+}
+
+.market-forge-cart-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 0.25rem;
+}
+
+.market-forge-cart-actions button,
+.market-forge-dry-run {
+  align-items: center;
+  display: inline-flex;
+  gap: 0.4rem;
+  justify-content: center;
+  width: auto;
+}
+
+.market-forge-checkout-card {
+  align-self: start;
+  border: 1px solid var(--color-border-light-primary, #777);
+  border-radius: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 0.7rem;
+  padding: 0.8rem;
+  position: sticky;
+  top: 0;
+}
+
+.market-forge-checkout-card h3 {
+  margin: 0;
+}
+
+.market-forge-checkout-card dl {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  margin: 0;
+}
+
+.market-forge-checkout-card dl > div {
+  align-items: baseline;
+  display: flex;
+  gap: 0.7rem;
+  justify-content: space-between;
+}
+
+.market-forge-checkout-card dt {
+  opacity: 0.72;
+}
+
+.market-forge-checkout-card dd {
+  margin: 0;
+  text-align: right;
+}
+
+.market-forge-deficit {
+  font-weight: 700;
+}
+
+.market-forge-dry-run {
+  min-height: 36px;
+  width: 100%;
+}
+
+.market-forge-checkout-card > small {
+  opacity: 0.7;
+}
+
+.market-forge-checkout-result {
+  border: 1px solid var(--color-border-light-primary, #777);
+  border-radius: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  padding: 0.6rem;
+}
+
+.market-forge-checkout-result strong {
+  align-items: center;
+  display: flex;
+  gap: 0.4rem;
+}
+
+.market-forge-checkout-result ul {
+  margin: 0.2rem 0 0 1.1rem;
+  padding: 0;
+}
+
+@media (max-width: 1020px) {
+  .market-forge-item-main {
+    grid-template-columns: 30px 42px minmax(180px, 1fr) 72px 100px;
+  }
+
+  .market-forge-buy-controls {
+    grid-column: 3 / -1;
+    justify-self: end;
+    width: min(260px, 100%);
+  }
+
+  .market-forge-cart-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .market-forge-checkout-card {
+    position: static;
+  }
+}
+
+@media (max-width: 760px) {
+  .market-forge-cart-line-main {
+    grid-template-columns: 30px 42px minmax(0, 1fr);
+  }
+
+  .market-forge-quantity-stepper,
+  .market-forge-line-total,
+  .market-forge-icon-button {
+    grid-column: 3;
+  }
+
+  .market-forge-line-total {
+    text-align: left;
+  }
+
+  .market-forge-cart-preview {
+    padding-left: 0.9rem;
+  }
+}

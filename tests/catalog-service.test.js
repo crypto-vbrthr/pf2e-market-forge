@@ -96,6 +96,26 @@ describe("CatalogService contract", () => {
     assert.deepEqual(hiddenResult.entries.map((entry) => entry.name), ["Allowed"]);
   });
 
+  it("re-resolves a cart product by UUID and reapplies current market availability", async () => {
+    const calls = { count: 0 };
+    const pack = makePack("world.checkout", [
+      row({ id: "item", name: "Checkout Item", level: 6, price: { gp: 25 } })
+    ], calls);
+    const service = new CatalogService({ packProvider: () => new Map([[pack.collection, pack]]) });
+    const profile = createDefaultMarketProfile({ sources: { itemCompendia: [pack.collection] } });
+    const uuid = `Compendium.${pack.collection}.Item.item`;
+
+    const available = await service.getEntry(uuid, { profile, maximumItemLevel: 6 });
+    assert.equal(available.name, "Checkout Item");
+    assert.equal(available.baseUnitPrice, 2500);
+    assert.equal(available.availability.available, true);
+
+    const blocked = await service.getEntry(uuid, { profile, maximumItemLevel: 5 });
+    assert.equal(blocked.availability.available, false);
+    assert.deepEqual(blocked.availability.reasons, ["level-too-high"]);
+    assert.equal(calls.count, 1);
+  });
+
   it("reports missing configured compendia without crashing the market", async () => {
     const service = new CatalogService({ packProvider: () => new Map() });
     const profile = createDefaultMarketProfile({ sources: { itemCompendia: ["world.missing"] } });

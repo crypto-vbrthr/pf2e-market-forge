@@ -26,6 +26,31 @@ describe("Cart contract", () => {
     assert.throws(() => productKey({ kind: "item", sourceUuid: "Compendium.foo" }, "sell"));
   });
 
+  it("updates quantities, totals, removes lines, and clears the purchase cart", () => {
+    const cart = new CartService();
+    const line = cart.add({
+      direction: "buy",
+      product: { kind: "item", sourceUuid: "Item.edit" },
+      quantity: 2,
+      quote: { unitPrice: 175, totalPrice: 350 }
+    });
+
+    cart.setQuantity("buy", line.id, 4);
+    assert.equal(cart.getQuotedTotal("buy"), 700);
+    assert.equal(cart.getState().buyLines[0].quantity, 4);
+    assert.equal(cart.remove("buy", line.id), true);
+    assert.equal(cart.getQuotedTotal("buy"), 0);
+
+    cart.add({
+      direction: "buy",
+      product: { kind: "item", sourceUuid: "Item.clear" },
+      quantity: 1,
+      quote: { unitPrice: 100, totalPrice: 100 }
+    });
+    cart.clear("buy");
+    assert.equal(cart.getState().buyLines.length, 0);
+  });
+
   it("returns cloned state instead of the live cart object", () => {
     const cart = new CartService();
     cart.add({

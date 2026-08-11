@@ -1,9 +1,12 @@
+import { CartService } from "../cart/cart-service.js";
 import { CatalogService } from "../catalog/catalog-service.js";
 import { ItemPreviewService } from "../catalog/preview-service.js";
 import { MODULE_ID } from "../core/constants.js";
-import { copperToCoins } from "../core/money.js";
 import { resolveMarketMaximumForActor } from "../market/market-level-context.js";
 import { createDefaultMarketProfile } from "../market/profile-defaults.js";
+import { CurrencyAdapter } from "../pf2e/currency-adapter.js";
+import { PriceService } from "../pricing/price-service.js";
+import { TransactionService } from "../transactions/transaction-service.js";
 import { createCatalogViewState, toggleExpandedUuid, updateCatalogViewState } from "./catalog-view-state.js";
 import { buildTabState, initialTabFromMode, normalizeMarketTab } from "./market-window-state.js";
 
@@ -14,8 +17,8 @@ export class MarketApplication extends HandlebarsApplicationMixin(ApplicationV2)
     id: `${MODULE_ID}-window`,
     classes: [MODULE_ID, "market-forge-window"],
     position: {
-      width: 1040,
-      height: 760
+      width: 1080,
+      height: 780
     },
     window: {
       icon: "fa-solid fa-coins",
@@ -36,13 +39,28 @@ export class MarketApplication extends HandlebarsApplicationMixin(ApplicationV2)
   #profile;
   #catalogService;
   #previewService;
+  #cartService;
+  #priceService;
+  #currencyAdapter;
+  #transactionService;
   #catalogFilters = createCatalogViewState();
   #expandedItems = new Set();
   #previews = new Map();
   #previewErrors = new Map();
+  #checkoutState = null;
   #searchTimer = null;
 
-  constructor({ actor, launchOptions = {}, profile = null, catalogService = null, previewService = null } = {}) {
+  constructor({
+    actor,
+    launchOptions = {},
+    profile = null,
+    catalogService = null,
+    previewService = null,
+    cartService = null,
+    priceService = null,
+    currencyAdapter = null,
+    transactionService = null
+  } = {}) {
     super();
     this.#actor = actor ?? null;
     this.#launchOptions = structuredClone(launchOptions);
@@ -50,6 +68,23 @@ export class MarketApplication extends HandlebarsApplicationMixin(ApplicationV2)
     this.#profile = profile ?? createDefaultMarketProfile();
     this.#catalogService = catalogService ?? new CatalogService();
     this.#previewService = previewService ?? new ItemPreviewService();
+    this.#cartService = cartService ?? new CartService();
+    this.#priceService = priceService ?? new PriceService();
+    this.#currencyAdapter = currencyAdapter ?? new CurrencyAdapter({
+      actorProvider: async (uuid) => {
+        if (this.#actor?.uuid === uuid) return this.#actor;
+        return typeof globalThis.fromUuid === "function" ? globalThis.fromUuid(uuid) : null;
+      }
+    });
+    this.#transactionService = transactionService ?? new TransactionService({
+      profileProvider: async (profileId) => profileId === this.#profile.id ? this.#profile : null,
+      productResolver: async (product, { profile, maximumItemLevel }) => {
+        if (product.kind !== "item") return null;
+        return this.#catalogService.getEntry(product.sourceUuid, { profile, maximumItemLevel });
+      },
+      priceService: this.#priceService,
+      balanceProvider: async (actorUuid) => this.#currencyAdapter.getBalance(actorUuid)
+    });
   }
 
   get actor() {
@@ -60,10 +95,9 @@ export class MarketApplication extends HandlebarsApplicationMixin(ApplicationV2)
     const context = await super._prepareContext(options);
     const actor = this.#actor;
     const tabs = buildTabState(this.#activeTab);
-    const levelContext = resolveMarketMaximumForActor(this.#profile, actor, {
-      activeParty: globalThis.game?.actors?.party ?? null
-    });
+    const levelContext = this.#resolveLevelContext();
     const maximumItemLevel = levelContext.result?.maximumItemLevel ?? null;
+    const balance = actor ? await this.#safeBalance(actor.uuid) : 0;
 
     let catalog = emptyCatalogResult();
     if (tabs.buy.active) {
@@ -76,6 +110,13 @@ export class MarketApplication extends HandlebarsApplicationMixin(ApplicationV2)
     }
 
     const preparedEntries = catalog.entries.map((entry) => this.#prepareCatalogEntry(entry));
+    const cartState = this.#cartService.getState();
+    const buyLines = cartState.buyLines.map((line) => this.#prepareCartLine(line));
+    const cartCount = cartState.buyLines.reduce((sum, line) => sum + line.quantity, 0);
+    const quotedTotal = this.#cartService.getQuotedTotal("buy");
+    const affordable = balance >= quotedTotal;
+    const remaining = affordable ? balance - quotedTotal : 0;
+    const deficit = affordable ? 0 : quotedTotal - balance;
 
     return Object.assign(context, {
       actor: actor ? {
@@ -84,7 +125,7 @@ export class MarketApplication extends HandlebarsApplicationMixin(ApplicationV2)
         img: actor.img,
         type: actor.type,
         typeLabel: this.#actorTypeLabel(actor.type),
-        currency: this.#currencyLabel(actor)
+        currency: this.#formatCopper(balance)
       } : null,
       profile: {
         id: this.#profile.id,
@@ -104,7 +145,7 @@ export class MarketApplication extends HandlebarsApplicationMixin(ApplicationV2)
       sellTab: tabs.sell,
       cartTab: tabs.cart,
       inventoryCount: this.#physicalItemCount(actor),
-      milestone: "2",
+      milestone: "3",
       readOnlyMilestone: true,
       catalog: {
         ...catalog,
@@ -115,6 +156,23 @@ export class MarketApplication extends HandlebarsApplicationMixin(ApplicationV2)
       },
       catalogFilters: this.#catalogFilters,
       catalogOptions: this.#catalogOptions(catalog.facets),
+      cart: {
+        lines: buyLines,
+        hasLines: buyLines.length > 0,
+        count: cartCount,
+        lineCount: buyLines.length,
+        quotedTotal,
+        quotedTotalLabel: this.#formatCopper(quotedTotal),
+        balance,
+        balanceLabel: this.#formatCopper(balance),
+        affordable,
+        remainingLabel: this.#formatCopper(remaining),
+        deficitLabel: this.#formatCopper(deficit),
+        itemActorName: actor?.name ?? game.i18n.localize("PF2E_MARKET_FORGE.NotAvailable"),
+        currencyActorName: actor?.name ?? game.i18n.localize("PF2E_MARKET_FORGE.NotAvailable"),
+        canDryRun: Boolean(actor && buyLines.length)
+      },
+      checkout: this.#prepareCheckoutState(),
       marketLevelContext: {
         partyName: levelContext.party?.name ?? null,
         memberLevels: levelContext.memberLevels.join(", ")
@@ -169,7 +227,152 @@ export class MarketApplication extends HandlebarsApplicationMixin(ApplicationV2)
       });
     }
 
+    for (const button of this.element.querySelectorAll("[data-market-add-item]")) {
+      button.addEventListener("click", async () => this.#addCatalogItem(button.dataset.marketAddItem));
+    }
+
+    for (const button of this.element.querySelectorAll("[data-cart-adjust-line]")) {
+      button.addEventListener("click", () => {
+        const lineId = button.dataset.cartAdjustLine;
+        const delta = Number(button.dataset.delta ?? 0);
+        const state = this.#cartService.getState();
+        const line = state.buyLines.find((entry) => entry.id === lineId);
+        if (!line || !Number.isSafeInteger(delta)) return;
+        this.#cartService.setQuantity("buy", lineId, Math.max(1, line.quantity + delta));
+        this.#cartChanged();
+        this.render();
+      });
+    }
+
+    for (const input of this.element.querySelectorAll("[data-cart-quantity-line]")) {
+      input.addEventListener("change", () => {
+        const lineId = input.dataset.cartQuantityLine;
+        const quantity = Math.max(1, Math.min(999, Math.trunc(Number(input.value) || 1)));
+        this.#cartService.setQuantity("buy", lineId, quantity);
+        this.#cartChanged();
+        this.render();
+      });
+    }
+
+    for (const button of this.element.querySelectorAll("[data-cart-remove-line]")) {
+      button.addEventListener("click", () => {
+        this.#cartService.remove("buy", button.dataset.cartRemoveLine);
+        this.#cartChanged();
+        this.render();
+      });
+    }
+
+    this.element.querySelector("[data-cart-clear]")?.addEventListener("click", () => {
+      this.#cartService.clear("buy");
+      this.#cartChanged();
+      this.render();
+    });
+
+    this.element.querySelector("[data-market-dry-run]")?.addEventListener("click", async (event) => {
+      const button = event.currentTarget;
+      button.disabled = true;
+      try {
+        await this.#runCheckoutDryRun();
+      } finally {
+        button.disabled = false;
+      }
+    });
+
     this.#activateEnrichedContent();
+  }
+
+  async #addCatalogItem(uuid) {
+    if (!uuid) return;
+    const quantityInput = Array.from(this.element.querySelectorAll("[data-market-quantity]")).find(
+      (input) => input.dataset.marketQuantity === uuid
+    );
+    const quantity = Math.max(1, Math.min(999, Math.trunc(Number(quantityInput?.value) || 1)));
+    const maximumItemLevel = this.#resolveLevelContext().result?.maximumItemLevel ?? null;
+    const entry = await this.#catalogService.getEntry(uuid, { profile: this.#profile, maximumItemLevel });
+    if (!entry?.availability?.available) {
+      ui.notifications?.warn?.(game.i18n.localize("PF2E_MARKET_FORGE.Errors.ItemUnavailable"));
+      return;
+    }
+
+    const quote = this.#priceService.quotePurchase(entry, quantity, this.#profile);
+    this.#cartService.add({
+      direction: "buy",
+      quantity,
+      quote,
+      product: {
+        kind: "item",
+        sourceUuid: entry.uuid,
+        name: entry.name,
+        img: entry.img,
+        level: entry.level
+      }
+    });
+    this.#cartChanged();
+    ui.notifications?.info?.(game.i18n.format("PF2E_MARKET_FORGE.Cart.Added", { quantity, name: entry.name }));
+    await this.render();
+  }
+
+  async #runCheckoutDryRun() {
+    const actor = this.#actor;
+    const state = this.#cartService.getState();
+    if (!actor || state.buyLines.length === 0) return;
+
+    const request = {
+      direction: "buy",
+      profileId: this.#profile.id,
+      itemActorUuid: actor.uuid,
+      currencyActorUuid: actor.uuid,
+      requestedByUserId: globalThis.game?.user?.id ?? "unknown-user",
+      lines: state.buyLines.map((line) => ({
+        product: structuredClone(line.product),
+        quantity: line.quantity
+      }))
+    };
+
+    try {
+      const maximumItemLevel = this.#resolveLevelContext().result?.maximumItemLevel ?? null;
+      const { plan, validation } = await this.#transactionService.dryRun(request, { maximumItemLevel });
+      this.#checkoutState = {
+        status: validation.valid ? "valid" : "invalid",
+        total: plan.total,
+        balance: validation.availableBalance ?? 0,
+        remaining: validation.remainingBalance ?? null,
+        errors: validation.errors
+      };
+    } catch (error) {
+      console.error(`${MODULE_ID} | Checkout dry run failed`, error);
+      this.#checkoutState = {
+        status: "error",
+        total: 0,
+        balance: await this.#safeBalance(actor.uuid),
+        remaining: null,
+        errors: [error instanceof Error ? error.message : String(error)]
+      };
+    }
+
+    await this.render();
+  }
+
+  #cartChanged() {
+    this.#checkoutState = null;
+  }
+
+  #prepareCheckoutState() {
+    const state = this.#checkoutState;
+    if (!state) return null;
+    const errorLabels = state.errors.map((error) => this.#transactionErrorLabel(error));
+    const remaining = Number.isSafeInteger(state.remaining) ? state.remaining : null;
+    return {
+      ...state,
+      valid: state.status === "valid",
+      invalid: state.status === "invalid",
+      error: state.status === "error",
+      totalLabel: this.#formatCopper(Math.max(0, state.total ?? 0)),
+      balanceLabel: this.#formatCopper(Math.max(0, state.balance ?? 0)),
+      remainingLabel: remaining !== null && remaining >= 0 ? this.#formatCopper(remaining) : null,
+      deficitLabel: remaining !== null && remaining < 0 ? this.#formatCopper(Math.abs(remaining)) : null,
+      errorLabels
+    };
   }
 
   async #togglePreview(uuid) {
@@ -197,10 +400,11 @@ export class MarketApplication extends HandlebarsApplicationMixin(ApplicationV2)
     const availabilityReasons = entry.availability.reasons.map((reason) =>
       this.#availabilityReasonLabel(reason, entry.availability.marketMaximumLevel)
     );
+    const quote = this.#priceService.quotePurchase(entry, 1, this.#profile);
 
     return {
       ...entry,
-      priceLabel: this.#formatCopper(entry.baseUnitPrice),
+      priceLabel: this.#formatCopper(quote.unitPrice),
       rarityLabel: game.i18n.localize(`PF2E_MARKET_FORGE.Rarity.${entry.rarity}`),
       typeLabel: this.#itemTypeLabel(entry.itemType),
       expanded,
@@ -212,6 +416,23 @@ export class MarketApplication extends HandlebarsApplicationMixin(ApplicationV2)
       available: entry.availability.available,
       availabilityReasons,
       availabilityReasonText: availabilityReasons.join(" · ")
+    };
+  }
+
+  #prepareCartLine(line) {
+    const uuid = line.product.sourceUuid ?? null;
+    const preview = uuid ? this.#previews.get(uuid) ?? null : null;
+    return {
+      ...line,
+      unitPriceLabel: this.#formatCopper(line.quotedUnitPrice),
+      totalPriceLabel: this.#formatCopper(line.quotedTotalPrice),
+      expanded: uuid ? this.#expandedItems.has(uuid) : false,
+      previewUuid: uuid,
+      preview: preview ? {
+        ...preview,
+        traitLabels: preview.traits.map((trait) => this.#traitLabel(trait))
+      } : null,
+      previewError: uuid ? this.#previewErrors.get(uuid) ?? null : null
     };
   }
 
@@ -257,6 +478,12 @@ export class MarketApplication extends HandlebarsApplicationMixin(ApplicationV2)
     return game.i18n.localize(`PF2E_MARKET_FORGE.Availability.${reason}`);
   }
 
+  #transactionErrorLabel(error) {
+    const key = `PF2E_MARKET_FORGE.TransactionError.${error}`;
+    const localized = game.i18n.localize(key);
+    return localized === key ? String(error) : localized;
+  }
+
   #itemTypeLabel(type) {
     const coreKey = globalThis.CONFIG?.Item?.typeLabels?.[type];
     if (coreKey) {
@@ -280,7 +507,7 @@ export class MarketApplication extends HandlebarsApplicationMixin(ApplicationV2)
   }
 
   #activateEnrichedContent() {
-    const root = this.element.querySelector(".market-forge-catalog-list");
+    const root = this.element.querySelector(".market-forge-content");
     if (!root) return;
 
     try {
@@ -290,46 +517,34 @@ export class MarketApplication extends HandlebarsApplicationMixin(ApplicationV2)
     }
   }
 
+  #resolveLevelContext() {
+    return resolveMarketMaximumForActor(this.#profile, this.#actor, {
+      activeParty: globalThis.game?.actors?.party ?? null
+    });
+  }
+
+  async #safeBalance(actorUuid) {
+    try {
+      return await this.#currencyAdapter.getBalance(actorUuid);
+    } catch (error) {
+      console.warn(`${MODULE_ID} | Could not read actor currency`, actorUuid, error);
+      return 0;
+    }
+  }
+
   #physicalItemCount(actor) {
     const contents = actor?.inventory?.contents;
     if (!contents) return 0;
     return Array.from(contents).length;
   }
 
-  #currencyLabel(actor) {
-    const coins = actor?.inventory?.coins;
-    if (coins && typeof coins.toString === "function") {
-      try {
-        return coins.toString({ decimal: true });
-      } catch (_error) {
-        // Fall through to denomination formatting.
-      }
-    }
-
-    const currency = actor?.inventory?.currency;
-    if (!currency) return game.i18n.localize("PF2E_MARKET_FORGE.NotAvailable");
-
-    const labels = [
-      ["pp", game.i18n.localize("PF2E_MARKET_FORGE.Coins.pp")],
-      ["gp", game.i18n.localize("PF2E_MARKET_FORGE.Coins.gp")],
-      ["sp", game.i18n.localize("PF2E_MARKET_FORGE.Coins.sp")],
-      ["cp", game.i18n.localize("PF2E_MARKET_FORGE.Coins.cp")]
-    ];
-    const parts = labels
-      .map(([key, label]) => [Number(currency[key] ?? 0), label])
-      .filter(([value]) => value > 0)
-      .map(([value, label]) => `${value} ${label}`);
-    return parts.join(" ") || `0 ${game.i18n.localize("PF2E_MARKET_FORGE.Coins.gp")}`;
-  }
-
   #formatCopper(value) {
-    const coins = copperToCoins(value);
-    const parts = [
-      [coins.pp, "pp"],
-      [coins.gp, "gp"],
-      [coins.sp, "sp"],
-      [coins.cp, "cp"]
-    ]
+    let remainder = Math.max(0, Math.trunc(Number(value) || 0));
+    const gp = Math.floor(remainder / 100);
+    remainder %= 100;
+    const sp = Math.floor(remainder / 10);
+    const cp = remainder % 10;
+    const parts = [[gp, "gp"], [sp, "sp"], [cp, "cp"]]
       .filter(([amount]) => amount > 0)
       .map(([amount, denomination]) => `${amount} ${game.i18n.localize(`PF2E_MARKET_FORGE.Coins.${denomination}`)}`);
     return parts.join(" ") || `0 ${game.i18n.localize("PF2E_MARKET_FORGE.Coins.cp")}`;

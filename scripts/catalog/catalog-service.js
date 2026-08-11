@@ -39,6 +39,27 @@ export class CatalogService {
     else this.#indexCache.clear();
   }
 
+  async getEntry(uuid, { profile, maximumItemLevel = null } = {}) {
+    if (typeof uuid !== "string" || !uuid) throw new TypeError("Catalog entry UUID is required.");
+    if (!profile || typeof profile !== "object") throw new TypeError("Catalog lookup requires a MarketProfile.");
+
+    const configuredSources = Array.isArray(profile.sources?.itemCompendia)
+      ? profile.sources.itemCompendia
+      : [];
+
+    for (const packId of configuredSources) {
+      const result = await this.#loadPack(packId);
+      const entry = result.entries.find((candidate) => candidate.uuid === uuid);
+      if (!entry) continue;
+      return {
+        ...entry,
+        availability: evaluateAvailability(entry, profile, { maximumItemLevel, sourceKind: "item" })
+      };
+    }
+
+    return null;
+  }
+
   async search({ profile, maximumItemLevel = null, filters = {}, limit = 150 } = {}) {
     if (!profile || typeof profile !== "object") throw new TypeError("Catalog search requires a MarketProfile.");
     if (!Number.isSafeInteger(limit) || limit < 1) throw new TypeError("Catalog result limit must be a positive integer.");

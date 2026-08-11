@@ -1,11 +1,11 @@
 import { assertCopperValue } from "../core/money.js";
 
-export function validateTransactionPlan(plan) {
+export function validateTransactionPlan(plan, { availableBalance = null } = {}) {
   const errors = [];
   const warnings = [];
 
   if (!plan || typeof plan !== "object") return { valid: false, errors: ["invalid-plan"], warnings };
-  if (!['buy', 'sell'].includes(plan.direction)) errors.push("invalid-direction");
+  if (!["buy", "sell"].includes(plan.direction)) errors.push("invalid-direction");
   if (!Array.isArray(plan.lines) || plan.lines.length === 0) errors.push("empty-plan");
 
   try {
@@ -29,5 +29,25 @@ export function validateTransactionPlan(plan) {
 
   if (Number.isSafeInteger(plan.total) && computedTotal !== plan.total) errors.push("total-mismatch");
 
-  return { valid: errors.length === 0, errors: [...new Set(errors)], warnings };
+  let remainingBalance = null;
+  if (availableBalance !== null) {
+    try {
+      assertCopperValue(availableBalance, "availableBalance");
+      remainingBalance = availableBalance - (Number.isSafeInteger(plan.total) ? plan.total : 0);
+      if (plan.direction === "buy" && remainingBalance < 0) errors.push("insufficient-funds");
+    } catch {
+      errors.push("invalid-balance");
+    }
+  }
+
+  const result = {
+    valid: errors.length === 0,
+    errors: [...new Set(errors)],
+    warnings
+  };
+  if (availableBalance !== null) {
+    result.availableBalance = availableBalance;
+    result.remainingBalance = remainingBalance;
+  }
+  return result;
 }

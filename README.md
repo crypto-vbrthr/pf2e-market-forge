@@ -53,3 +53,9 @@ npm test
 ```
 
 The test suite does not require a running Foundry instance.
+
+## Milestone 3
+
+Milestone 3 turns the regular item catalog into a functional purchase cart without yet mutating Foundry documents. Items can be added in arbitrary quantities, identical products merge, quantities can be edited in the cart, and totals use the central market pricing service.
+
+The cart shows the selected actor as both item recipient and payment source for this milestone. A checkout dry run reloads every product from the configured market compendia, reapplies current market availability, recalculates authoritative prices, reads the current PF2e currency balance, and reports whether the purchase would succeed. No item is created and no currency is removed in Milestone 3.
