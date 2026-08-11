@@ -1,15 +1,31 @@
 # Changelog
 
+## 0.0.3 - Milestone 2
+
+- Added a real PF2e equipment catalog backed by configured Item compendia.
+- Default market profile now uses `pf2e.equipment-srd` and `pf2e.spells-srd` as its initial sources.
+- Added cached compendium indexing with lightweight physical-item metadata.
+- Added catalog search and filters for item type, level, rarity, and compendium.
+- Added market-level availability checks to the catalog, including disabled/hidden behavior from the MarketProfile contract.
+- Added party-aware market maximum resolution using character members of the reference Party actor.
+- Added lazy expandable item previews: full documents and descriptions are loaded only when a row is opened.
+- Added a button to open the original PF2e item sheet from an expanded preview.
+- Added result caps and source diagnostics to keep large compendia responsive.
+- Added M2 catalog, preview, level-context, filter-state, and template contract tests.
+- Buying, selling, cart mutation, spell-item generation UI, and currency mutation remain intentionally disabled.
+
+## 0.0.2 - Milestone 1
+
+- Added Foundry v14 ApplicationV2 Market Forge shell.
+- Added character and party inventory launch buttons.
+- Added Actor Directory context-menu launch entry.
+- Added automatic actor selection and actor-aware market header.
+- Added Buy, Spell Items, Sell, and Cart tabs.
+- Added settings for sheet-button and context-menu integrations.
+- Added launcher/permission/UI state tests.
+
 ## 0.0.1 - Milestone 0
 
-- Added Foundry v14 module manifest and PF2e system dependency.
-- Added public API and launcher scaffolding.
-- Added MarketProfile contract and validation.
-- Added canonical copper money utilities.
-- Added party-level and availability services.
-- Added price quote service.
-- Added runtime-only cart service.
-- Added scroll and standard wand draft rules.
-- Added checkout normalization and transaction-plan contract checks.
-- Added PF2e adapter stubs with explicit not-implemented behavior.
-- Added contract test suite.
+- Initial installable module skeleton.
+- v0.1 domain contracts and service boundaries.
+- Pure contract tests for money, profiles, availability, pricing, cart, spells, checkout plans, and adapters.

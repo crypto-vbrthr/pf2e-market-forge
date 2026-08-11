@@ -1,5 +1,5 @@
 export class MarketSocket {
   register() {
-    // Milestone 0: authoritative GM socket transport begins in a later milestone.
+    // Reserved for the later GM-authoritative transaction transport milestone.
   }
 }

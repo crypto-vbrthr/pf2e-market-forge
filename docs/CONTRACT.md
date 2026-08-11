@@ -11,7 +11,10 @@
 7. A transaction plan must use recomputed availability and price quotes.
 8. Scroll ranks range from their spell's base rank through rank 10.
 9. Standard wand ranks range from their spell's base rank through rank 9.
-10. Runtime spell snapshots and carts are not persistent in Milestone 0.
+10. Runtime spell snapshots and carts are not persistent.
+11. Milestone 2 catalog indices contain lightweight metadata only; item descriptions are resolved lazily on expansion.
+12. Catalog visibility and checkout availability share the same `AvailabilityService` contract.
+13. A configured but unavailable compendium must degrade to a source warning instead of breaking the market window.
 
 ## Core contracts
 
@@ -38,3 +41,12 @@ Contains requested products, quantities, item actor, currency actor, market prof
 ### TransactionPlan
 
 Future transaction code will create this only after reloading current documents and recomputing availability and prices.
+
+
+## Milestone 2 catalog boundary
+
+`CatalogService` reads only configured item compendia and returns lightweight `CatalogEntry` data plus availability state. It does not create, update, or delete Foundry documents.
+
+`ItemPreviewService` resolves a full item only after the user expands a row, enriches the current description, caches that preview for the session, and may open the original item sheet. Preview loading is read-only.
+
+The default development profile seeds `pf2e.equipment-srd` and `pf2e.spells-srd` as initial source identifiers. Dedicated source/profile configuration remains a later milestone.

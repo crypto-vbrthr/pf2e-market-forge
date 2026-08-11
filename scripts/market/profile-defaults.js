@@ -6,8 +6,8 @@ export function createDefaultMarketProfile(overrides = {}) {
     id: "default",
     name: "Default Market",
     sources: {
-      itemCompendia: [],
-      spellCompendia: []
+      itemCompendia: ["pf2e.equipment-srd"],
+      spellCompendia: ["pf2e.spells-srd"]
     },
     availability: {
       levelLimit: {

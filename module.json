@@ -1,8 +1,8 @@
 {
   "id": "pf2e-market-forge",
   "title": "PF2E Market Forge",
-  "description": "Comfortable rules-aware buying and selling for Pathfinder 2e, including party inventory support and spell-item generation.",
-  "version": "0.0.1",
+  "description": "Rules-aware PF2e market workflow. Milestone 2 adds a searchable equipment catalog, market availability filters, and lazy expandable item previews.",
+  "version": "0.0.3",
   "authors": [
     {
       "name": "Bully"

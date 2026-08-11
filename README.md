@@ -1,47 +1,55 @@
 # PF2E Market Forge
 
-Milestone 0 establishes the module shell and the contracts for the future market implementation.
+PF2E Market Forge is a Foundry VTT module for Pathfinder 2e that aims to turn buying and selling equipment into a rules-aware market workflow for characters and the Party stash.
 
-## Current scope
+## Milestone 2
 
-Implemented and contract-tested:
+Milestone 2 makes the **Buy** tab a real, read-only equipment browser.
 
-- canonical copper-value money representation
-- market profile validation/defaults
-- fixed and party-derived item-level limits
-- availability decisions for level, rarity, and compendium source
-- purchase/sale price quotes and full-value treasure handling
-- runtime-only buy/sell carts
-- scroll and standard wand rank/level/price derivation
-- checkout request normalization that ignores client-provided prices
-- PF2e adapter interfaces that deliberately perform no document writes yet
-- public API and launcher scaffold
+### Available now
 
-Not implemented in Milestone 0:
+- Open Market Forge from a character inventory.
+- Open Market Forge from the Party inventory.
+- Open Market Forge from the Actor Directory context menu.
+- Browse physical items from the market profile's configured compendia.
+- Default source: `pf2e.equipment-srd`.
+- Search by item name.
+- Filter by item type, level, rarity, and compendium.
+- Apply the current market level cap to catalog entries.
+- Calculate party-derived caps from character members of the Party actor.
+- Display unavailable items as disabled, or hide them when the profile requests it.
+- Expand an item inline to lazy-load and render its PF2e description.
+- Open the complete original PF2e item sheet from the preview.
+- Cached compendium indices keep repeated searches lightweight.
 
-- market UI
-- actor-sheet / actor-directory launch buttons
-- compendium indexing
-- item previews
-- real currency or inventory mutations
-- GM-authoritative sockets
-- receipts
+### Still intentionally inactive
 
-## Foundry target
+- Adding catalog entries to the cart.
+- Selling inventory items.
+- Checkout and currency/item mutations.
+- Scroll and wand browser UI.
 
-- Foundry VTT v14
-- Pathfinder 2e system required
+Those operations remain behind the transaction boundary established in Milestone 0.
 
-## Running tests
+## Default market profile
+
+The initial profile uses:
+
+- Items: `pf2e.equipment-srd`
+- Spells: `pf2e.spells-srd`
+- Maximum level: average party level, rounded down
+- Rarity: common enabled; uncommon, rare, and unique displayed as unavailable
+- Buy multiplier: 100%
+- Sell multiplier: 50%
+
+A dedicated profile/source configuration UI is planned after the core shopping workflow is working end to end.
+
+## Development
+
+Run the contract tests with:
 
 ```bash
 npm test
 ```
 
-Milestone 0 uses Node's built-in test runner, so no test dependency installation is required.
-
-The runtime code avoids importing Foundry globals in the domain services, so the contracts can be tested in plain Node.
-
-## Architecture rule
-
-The cart is a draft, not authority. Checkout requests never provide authoritative prices. Final availability and pricing will be recomputed by the transaction layer before any Foundry document mutation is allowed.
+The test suite does not require a running Foundry instance.

@@ -8,5 +8,5 @@ export class InventoryAdapter {
 }
 
 function notImplemented(method) {
-  throw new Error(`PF2E Market Forge Milestone 0: InventoryAdapter.${method} is not implemented.`);
+  throw new Error(`PF2E Market Forge: InventoryAdapter.${method} is not implemented.`);
 }

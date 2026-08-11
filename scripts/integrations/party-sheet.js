@@ -1,3 +1,5 @@
+import { injectMarketButton } from "./sheet-integration-helpers.js";
+
 export function registerPartySheetIntegration() {
-  // Milestone 0: party inventory launch integration intentionally deferred.
+  Hooks.on("renderActorSheetPF2e", (app, html) => injectMarketButton(app, html, "party"));
 }

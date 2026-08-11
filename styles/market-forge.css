@@ -1,1 +1,452 @@
-/* Milestone 0: reserved for Market Forge UI styles. */
+.pf2e-market-forge-inventory-button {
+  align-items: center;
+  display: inline-flex;
+  gap: 0.35rem;
+  margin-left: 0.5rem;
+  min-height: 28px;
+  white-space: nowrap;
+}
+
+.inventory-header:has(.pf2e-market-forge-inventory-button) {
+  align-items: center;
+  display: flex;
+  gap: 0.5rem;
+}
+
+.inventory-header:has(.pf2e-market-forge-inventory-button) .search {
+  flex: 1 1 auto;
+}
+
+.market-forge-window .window-content {
+  padding: 0;
+}
+
+.market-forge-shell {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 540px;
+}
+
+.market-forge-hero {
+  align-items: center;
+  border-bottom: 1px solid var(--color-border-light-primary, #777);
+  display: grid;
+  gap: 0.8rem;
+  grid-template-columns: auto 1fr auto;
+  padding: 0.8rem 1rem;
+}
+
+.market-forge-actor-image {
+  border: 1px solid var(--color-border-light-primary, #777);
+  border-radius: 6px;
+  height: 54px;
+  object-fit: cover;
+  width: 54px;
+}
+
+.market-forge-actor-details h2,
+.market-forge-section-heading h3,
+.market-forge-empty-state h3,
+.market-forge-config-card h3 {
+  margin: 0;
+}
+
+.market-forge-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-top: 0.2rem;
+  opacity: 0.8;
+}
+
+.market-forge-profile-summary {
+  display: flex;
+  flex-direction: column;
+  max-width: 260px;
+  text-align: right;
+}
+
+.market-forge-kicker {
+  font-size: 0.75rem;
+  opacity: 0.7;
+  text-transform: uppercase;
+}
+
+.market-forge-tabs {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 0.35rem;
+  padding: 0.55rem 0.7rem;
+}
+
+.market-forge-tabs button {
+  align-items: center;
+  display: inline-flex;
+  gap: 0.45rem;
+  justify-content: center;
+  min-height: 34px;
+}
+
+.market-forge-tabs button.active {
+  box-shadow: inset 0 -3px 0 var(--color-border-highlight, #ff6400);
+  font-weight: 700;
+}
+
+.market-forge-badge {
+  align-items: center;
+  border: 1px solid currentColor;
+  border-radius: 999px;
+  display: inline-flex;
+  font-size: 0.7rem;
+  height: 1.25rem;
+  justify-content: center;
+  min-width: 1.25rem;
+  padding: 0 0.25rem;
+}
+
+.market-forge-content {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+  padding: 0 0.7rem 0.7rem;
+}
+
+.market-forge-panel {
+  border: 1px solid var(--color-border-light-primary, #777);
+  border-radius: 6px;
+  min-height: 390px;
+  padding: 0.8rem;
+}
+
+.market-forge-toolbar {
+  display: grid;
+  gap: 0.5rem;
+  grid-template-columns: minmax(260px, 1fr) auto auto;
+}
+
+.market-forge-search {
+  align-items: center;
+  display: flex;
+  gap: 0.45rem;
+}
+
+.market-forge-search input {
+  flex: 1 1 auto;
+}
+
+.market-forge-empty-state {
+  align-items: center;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  min-height: 310px;
+  opacity: 0.72;
+  text-align: center;
+}
+
+.market-forge-empty-state.compact {
+  min-height: 250px;
+}
+
+.market-forge-empty-state > i {
+  font-size: 2.5rem;
+  margin-bottom: 0.7rem;
+}
+
+.market-forge-empty-state p,
+.market-forge-section-heading p {
+  margin: 0.3rem 0 0;
+  max-width: 620px;
+}
+
+.market-forge-two-column {
+  display: grid;
+  gap: 0.8rem;
+  grid-template-columns: minmax(0, 1.4fr) minmax(260px, 0.6fr);
+  margin-top: 0.8rem;
+}
+
+.market-forge-config-card {
+  border: 1px solid var(--color-border-light-primary, #777);
+  border-radius: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 0.7rem;
+  padding: 0.8rem;
+}
+
+.market-forge-config-card label {
+  display: grid;
+  gap: 0.35rem;
+  grid-template-columns: 1fr minmax(120px, 1fr);
+}
+
+.disabled-card {
+  opacity: 0.66;
+}
+
+.market-forge-price-preview {
+  border-top: 1px solid var(--color-border-light-primary, #777);
+  display: flex;
+  justify-content: space-between;
+  padding-top: 0.7rem;
+}
+
+.market-forge-section-heading {
+  align-items: flex-start;
+  display: flex;
+  justify-content: space-between;
+}
+
+.market-forge-count,
+.market-forge-total {
+  border: 1px solid var(--color-border-light-primary, #777);
+  border-radius: 999px;
+  padding: 0.35rem 0.6rem;
+}
+
+.market-forge-footer-note {
+  border-top: 1px solid var(--color-border-light-primary, #777);
+  font-size: 0.8rem;
+  opacity: 0.7;
+  padding: 0.45rem 0.8rem;
+  text-align: center;
+}
+
+@media (max-width: 760px) {
+  .market-forge-hero {
+    grid-template-columns: auto 1fr;
+  }
+
+  .market-forge-profile-summary {
+    grid-column: 1 / -1;
+    max-width: none;
+    text-align: left;
+  }
+
+  .market-forge-tabs {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .market-forge-toolbar,
+  .market-forge-two-column {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Milestone 2 catalog */
+.market-forge-catalog-toolbar {
+  grid-template-columns: minmax(260px, 1.6fr) repeat(4, minmax(120px, 0.55fr));
+}
+
+.market-forge-catalog-summary {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  justify-content: space-between;
+  margin: 0.65rem 0;
+  opacity: 0.78;
+}
+
+.market-forge-warning {
+  align-items: center;
+  border: 1px solid var(--color-border-highlight, #9f6d2c);
+  border-radius: 6px;
+  display: flex;
+  gap: 0.5rem;
+  margin: 0.55rem 0;
+  padding: 0.55rem 0.7rem;
+}
+
+.market-forge-catalog-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+
+.market-forge-item-row {
+  border: 1px solid var(--color-border-light-primary, #777);
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.market-forge-item-row.unavailable {
+  opacity: 0.68;
+}
+
+.market-forge-item-main {
+  align-items: center;
+  display: grid;
+  gap: 0.55rem;
+  grid-template-columns: 30px 42px minmax(220px, 1fr) 88px 112px 150px;
+  padding: 0.45rem 0.55rem;
+}
+
+.market-forge-expand-button {
+  align-items: center;
+  display: inline-flex;
+  height: 30px;
+  justify-content: center;
+  min-width: 30px;
+  padding: 0;
+}
+
+.market-forge-item-image {
+  border: 1px solid var(--color-border-light-primary, #777);
+  border-radius: 4px;
+  height: 40px;
+  object-fit: cover;
+  width: 40px;
+}
+
+.market-forge-item-identity,
+.market-forge-item-level,
+.market-forge-item-price {
+  min-width: 0;
+}
+
+.market-forge-item-identity {
+  display: flex;
+  flex-direction: column;
+}
+
+.market-forge-item-identity strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.market-forge-item-identity small {
+  opacity: 0.72;
+}
+
+.market-forge-unavailable-reason {
+  opacity: 1 !important;
+  margin-top: 0.15rem;
+}
+
+.market-forge-item-level,
+.market-forge-item-price {
+  display: flex;
+  flex-direction: column;
+  text-align: right;
+}
+
+.market-forge-item-level span,
+.market-forge-item-price span {
+  font-size: 0.72rem;
+  opacity: 0.65;
+  text-transform: uppercase;
+}
+
+.market-forge-cart-button {
+  align-items: center;
+  display: inline-flex;
+  gap: 0.35rem;
+  justify-content: center;
+  min-height: 32px;
+}
+
+.market-forge-item-preview {
+  border-top: 1px solid var(--color-border-light-primary, #777);
+  padding: 0.7rem 0.9rem 0.8rem 4.7rem;
+}
+
+.market-forge-traits {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+  margin-bottom: 0.55rem;
+}
+
+.market-forge-traits span {
+  border: 1px solid var(--color-border-light-primary, #777);
+  border-radius: 999px;
+  font-size: 0.75rem;
+  padding: 0.15rem 0.45rem;
+}
+
+.market-forge-preview-meta {
+  display: flex;
+  flex-wrap: wrap;
+  font-size: 0.82rem;
+  gap: 0.8rem;
+  margin-bottom: 0.6rem;
+  opacity: 0.78;
+}
+
+.market-forge-description {
+  line-height: 1.45;
+  max-width: 900px;
+}
+
+.market-forge-description > :first-child {
+  margin-top: 0;
+}
+
+.market-forge-description > :last-child {
+  margin-bottom: 0;
+}
+
+.market-forge-preview-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 0.7rem;
+}
+
+.market-forge-preview-actions button {
+  align-items: center;
+  display: inline-flex;
+  gap: 0.4rem;
+  width: auto;
+}
+
+.market-forge-preview-loading {
+  opacity: 0.7;
+}
+
+@media (max-width: 980px) {
+  .market-forge-catalog-toolbar {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .market-forge-catalog-toolbar .market-forge-search {
+    grid-column: 1 / -1;
+  }
+
+  .market-forge-item-main {
+    grid-template-columns: 30px 42px minmax(180px, 1fr) 70px 100px;
+  }
+
+  .market-forge-cart-button {
+    grid-column: 3 / -1;
+    justify-self: end;
+    width: auto;
+  }
+}
+
+@media (max-width: 700px) {
+  .market-forge-item-main {
+    grid-template-columns: 30px 42px minmax(0, 1fr);
+  }
+
+  .market-forge-item-level,
+  .market-forge-item-price,
+  .market-forge-cart-button {
+    grid-column: 3;
+    justify-self: stretch;
+    text-align: left;
+  }
+
+  .market-forge-item-level,
+  .market-forge-item-price {
+    flex-direction: row;
+    gap: 0.4rem;
+  }
+
+  .market-forge-item-preview {
+    padding-left: 0.9rem;
+  }
+}

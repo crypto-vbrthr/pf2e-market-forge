@@ -1,27 +1,29 @@
 import { API_VERSION } from "../core/constants.js";
 import { MarketLauncher } from "../launcher/market-launcher.js";
+import { MarketProfileService } from "../market/profile-service.js";
 
 export class MarketForgeAPI {
   version = API_VERSION;
-  #launcher = new MarketLauncher();
+  #profiles = new MarketProfileService();
+  #launcher = new MarketLauncher({ profileService: this.#profiles });
 
   async open(options = {}) {
     return this.#launcher.open(options);
   }
 
   getProfiles() {
-    return [];
+    return this.#profiles.getProfiles();
   }
 
-  getProfile() {
-    return null;
+  getProfile(id) {
+    return this.#profiles.getProfile(id);
   }
 
   async quotePurchase() {
-    throw new Error("PF2E Market Forge Milestone 0: public purchase quoting is not wired to Foundry yet.");
+    throw new Error("PF2E Market Forge Milestone 1: public purchase quoting is not wired to Foundry yet.");
   }
 
   async quoteSale() {
-    throw new Error("PF2E Market Forge Milestone 0: public sale quoting is not wired to Foundry yet.");
+    throw new Error("PF2E Market Forge Milestone 1: public sale quoting is not wired to Foundry yet.");
   }
 }

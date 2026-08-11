@@ -6,5 +6,5 @@ export class CurrencyAdapter {
 }
 
 function notImplemented(method) {
-  throw new Error(`PF2E Market Forge Milestone 0: CurrencyAdapter.${method} is not implemented.`);
+  throw new Error(`PF2E Market Forge: CurrencyAdapter.${method} is not implemented.`);
 }
