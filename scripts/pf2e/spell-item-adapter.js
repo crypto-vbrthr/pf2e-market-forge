@@ -1,3 +1,4 @@
+import { createRuntimeId } from "../core/id.js";
 import { copperToCoins } from "../core/money.js";
 
 const MAGIC_TRADITIONS = new Set(["arcane", "divine", "occult", "primal"]);
@@ -12,7 +13,7 @@ export class SpellItemAdapter {
     this.#resolver = resolver ?? ((uuid) => globalThis.fromUuid?.(uuid));
     this.#configProvider = configProvider ?? (() => globalThis.CONFIG?.PF2E?.spellcastingItems ?? null);
     this.#localize = localize ?? ((key, data) => globalThis.game?.i18n?.format?.(key, data) ?? key);
-    this.#idFactory = idFactory ?? (() => globalThis.foundry?.utils?.randomID?.() ?? crypto.randomUUID().replaceAll("-", "").slice(0, 16));
+    this.#idFactory = idFactory ?? (() => createRuntimeId(16).replaceAll("-", "").slice(0, 16));
   }
 
   async createScrollSource(draft, options = {}) {

@@ -90,7 +90,7 @@ export class MarketProfilesApplication extends withHandlebars(BaseApplicationV2)
       valid: validation.valid,
       validationErrors: validation.errors,
       canDelete: profiles.length > 1 || !profiles.some((profile) => profile.id === draft.id),
-      milestone: "7.1"
+      milestone: "7.2"
     });
   }
 

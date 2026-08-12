@@ -265,7 +265,7 @@ export class MarketApplication extends HandlebarsApplicationMixin(ApplicationV2)
       sellTab: tabs.sell,
       cartTab: tabs.cart,
       inventoryCount: this.#physicalItemCount(actor),
-      milestone: "7.1",
+      milestone: "7.2",
       readOnlyMilestone: false,
       catalog: {
         ...catalog,
@@ -407,7 +407,7 @@ export class MarketApplication extends HandlebarsApplicationMixin(ApplicationV2)
       this.render();
     });
 
-    this.element.querySelector("[data-spell-add-cart]")?.addEventListener("click", async () => this.#addSpellItem());
+    this.element.querySelector("[data-spell-add-cart]")?.addEventListener("click", async () => this.#runCartAction(() => this.#addSpellItem()));
     this.element.querySelector("[data-spell-open]")?.addEventListener("click", async (event) => {
       try {
         await this.#spellPreviewService.openSheet(event.currentTarget.dataset.spellOpen);
@@ -447,11 +447,11 @@ export class MarketApplication extends HandlebarsApplicationMixin(ApplicationV2)
     }
 
     for (const button of this.element.querySelectorAll("[data-market-add-item]")) {
-      button.addEventListener("click", async () => this.#addCatalogItem(button.dataset.marketAddItem));
+      button.addEventListener("click", async () => this.#runCartAction(() => this.#addCatalogItem(button.dataset.marketAddItem)));
     }
 
     for (const button of this.element.querySelectorAll("[data-market-add-sale]")) {
-      button.addEventListener("click", async () => this.#addSaleItem(button.dataset.marketAddSale));
+      button.addEventListener("click", async () => this.#runCartAction(() => this.#addSaleItem(button.dataset.marketAddSale)));
     }
 
     for (const button of this.element.querySelectorAll("[data-cart-direction]")) {
@@ -527,6 +527,15 @@ export class MarketApplication extends HandlebarsApplicationMixin(ApplicationV2)
     });
 
     this.#activateEnrichedContent();
+  }
+
+  async #runCartAction(action) {
+    try {
+      await action();
+    } catch (error) {
+      console.error(`${MODULE_ID} | Could not update market cart`, error);
+      ui.notifications?.error?.(game.i18n.localize("PF2E_MARKET_FORGE.Errors.CartActionFailed"));
+    }
   }
 
   async #addCatalogItem(uuid) {

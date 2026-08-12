@@ -1,3 +1,4 @@
+import { createRuntimeId } from "../core/id.js";
 import { InventoryAdapter } from "../pf2e/inventory-adapter.js";
 import { CurrencyAdapter } from "../pf2e/currency-adapter.js";
 import { PriceService } from "../pricing/price-service.js";
@@ -29,7 +30,7 @@ export class TransactionService {
     receiptService = new ReceiptService(),
     permissionProvider,
     lock = globalTransactionLock,
-    idFactory = () => crypto.randomUUID(),
+    idFactory = () => createRuntimeId(),
     now = () => Date.now()
   } = {}) {
     this.#profileProvider = profileProvider ?? (async () => null);

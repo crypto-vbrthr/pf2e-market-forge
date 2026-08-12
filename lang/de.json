@@ -275,5 +275,6 @@
   "PF2E_MARKET_FORGE.Profiles.DeleteFailed": "Marktprofil konnte nicht gelöscht werden.",
   "PF2E_MARKET_FORGE.Profiles.DefaultSet": "Standardmarkt geändert.",
   "PF2E_MARKET_FORGE.Profiles.Manage": "Marktprofile verwalten",
-  "PF2E_MARKET_FORGE.Profiles.CartClearedOnSwitch": "Beim Wechsel des Marktprofils wurden die Warenkörbe geleert, damit keine Preise oder Verfügbarkeiten des vorherigen Marktes übernommen werden."
+  "PF2E_MARKET_FORGE.Profiles.CartClearedOnSwitch": "Beim Wechsel des Marktprofils wurden die Warenkörbe geleert, damit keine Preise oder Verfügbarkeiten des vorherigen Marktes übernommen werden.",
+  "PF2E_MARKET_FORGE.Errors.CartActionFailed": "Der Warenkorb konnte nicht aktualisiert werden. Details stehen in der Browserkonsole."
 }

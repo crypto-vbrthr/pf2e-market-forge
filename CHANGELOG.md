@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.0.13 - Milestone 7.2 Player Cart Hotfix
+
+- Fixed purchase and sale cart lines failing to be created on player clients where `crypto.randomUUID()` is unavailable.
+- Runtime IDs now prefer Foundry VTT's public `foundry.utils.randomID()` helper.
+- The same player-safe ID generation is used for transaction IDs and generated spell-item IDs.
+- Added regression coverage for a player-like client without `crypto.randomUUID()`.
+
 ## 0.0.12 - Milestone 7.1 Hotfix
 
 - Market Forge now listens for profile changes while its window is already open.

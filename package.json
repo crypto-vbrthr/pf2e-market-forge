@@ -1,9 +1,9 @@
 {
   "name": "pf2e-market-forge",
-  "version": "0.0.12",
+  "version": "0.0.13",
   "private": true,
   "type": "module",
-  "description": "PF2E Market Forge with live-refreshing market profiles, per-profile rules, source selection, and contract-tested transactions",
+  "description": "PF2E Market Forge with player-safe cart IDs, live-refreshing market profiles, per-profile rules, source selection, and contract-tested transactions",
   "scripts": {
     "test": "node --test tests/*.test.js"
   }

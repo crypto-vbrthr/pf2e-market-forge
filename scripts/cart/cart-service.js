@@ -1,3 +1,4 @@
+import { createRuntimeId } from "../core/id.js";
 import { assertCopperValue } from "../core/money.js";
 
 export class CartService {
@@ -33,7 +34,7 @@ export class CartService {
     }
 
     const line = {
-      id: crypto.randomUUID(),
+      id: createRuntimeId(),
       key,
       direction,
       product: structuredClone(product),

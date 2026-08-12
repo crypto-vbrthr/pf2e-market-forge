@@ -275,5 +275,6 @@
   "PF2E_MARKET_FORGE.Profiles.DeleteFailed": "Could not delete market profile.",
   "PF2E_MARKET_FORGE.Profiles.DefaultSet": "Default market changed.",
   "PF2E_MARKET_FORGE.Profiles.Manage": "Manage market profiles",
-  "PF2E_MARKET_FORGE.Profiles.CartClearedOnSwitch": "The carts were cleared when switching market profiles so prices and availability from the previous market are not carried over."
+  "PF2E_MARKET_FORGE.Profiles.CartClearedOnSwitch": "The carts were cleared when switching market profiles so prices and availability from the previous market are not carried over.",
+  "PF2E_MARKET_FORGE.Errors.CartActionFailed": "The cart could not be updated. Details are available in the browser console."
 }
