@@ -1,5 +1,6 @@
 import { MODULE_ID } from "../core/constants.js";
 import { MarketProfileService } from "../market/profile-service.js";
+import { createConfiguredMarketProfile } from "../market/profile-settings.js";
 import { MarketPermissionService } from "../permissions/permission-service.js";
 
 export class MarketLauncher {
@@ -39,7 +40,10 @@ export class MarketLauncher {
       return false;
     }
 
-    const profile = this.#profileService.getProfile(options.profileId ?? "default") ?? this.#profileService.getProfile("default");
+    const requestedProfileId = options.profileId ?? "default";
+    const profile = requestedProfileId === "default"
+      ? createConfiguredMarketProfile()
+      : this.#profileService.getProfile(requestedProfileId) ?? createConfiguredMarketProfile();
     const { MarketApplication } = await import("../applications/market-application.js");
 
     if (this.#application?.rendered) await this.#application.close();

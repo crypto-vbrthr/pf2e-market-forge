@@ -1,6 +1,7 @@
 import { API_VERSION } from "../core/constants.js";
 import { MarketLauncher } from "../launcher/market-launcher.js";
 import { MarketProfileService } from "../market/profile-service.js";
+import { createConfiguredMarketProfile } from "../market/profile-settings.js";
 
 export class MarketForgeAPI {
   version = API_VERSION;
@@ -12,10 +13,12 @@ export class MarketForgeAPI {
   }
 
   getProfiles() {
-    return this.#profiles.getProfiles();
+    const profiles = this.#profiles.getProfiles().filter((profile) => profile.id !== "default");
+    return [createConfiguredMarketProfile(), ...profiles];
   }
 
   getProfile(id) {
+    if (id === "default") return createConfiguredMarketProfile();
     return this.#profiles.getProfile(id);
   }
 

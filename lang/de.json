@@ -211,5 +211,20 @@
   "PF2E_MARKET_FORGE.Tradition.divine": "Göttlich",
   "PF2E_MARKET_FORGE.Tradition.occult": "Okkult",
   "PF2E_MARKET_FORGE.Tradition.primal": "Natur",
-  "PF2E_MARKET_FORGE.Milestone6Footer": "Milestone 6: Schriftrollen und gewöhnliche Zauberstäbe können aus freigegebenen Zaubern mit wählbarem Grad erzeugt, in den Warenkorb gelegt und über denselben abgesicherten Kaufpfad erworben werden."
+  "PF2E_MARKET_FORGE.Milestone6Footer": "Milestone 6.1: Kauf, Verkauf sowie Schriftrollen und gewöhnliche Zauberstäbe verwenden dieselbe abgesicherte Marktlogik; die maximale Gegenstandsstufe ist jetzt durch die SL konfigurierbar.",
+  "PF2E_MARKET_FORGE.Settings.MarketLevelMode.Name": "Maximale Gegenstandsstufe: Berechnung",
+  "PF2E_MARKET_FORGE.Settings.MarketLevelMode.Hint": "Legt fest, ob die Marktgrenze aus der Gruppe berechnet, fest vorgegeben oder vollständig aufgehoben wird.",
+  "PF2E_MARKET_FORGE.Settings.MarketFixedLevel.Name": "Feste maximale Gegenstandsstufe",
+  "PF2E_MARKET_FORGE.Settings.MarketFixedLevel.Hint": "Wird nur verwendet, wenn „Feste Gegenstandsstufe“ als Berechnung gewählt ist.",
+  "PF2E_MARKET_FORGE.Settings.MarketLevelOffset.Name": "Modifikator der Marktstufe",
+  "PF2E_MARKET_FORGE.Settings.MarketLevelOffset.Hint": "Wird bei gruppenbasierten Berechnungen nach der Rundung addiert. Beispiel: +1 erlaubt Gegenstände eine Stufe über der ermittelten Gruppenstufe.",
+  "PF2E_MARKET_FORGE.Settings.MarketLevelRounding.Name": "Rundung der Gruppenstufe",
+  "PF2E_MARKET_FORGE.Settings.MarketLevelRounding.Hint": "Bestimmt bei gruppenbasierten Berechnungen, wie ein nicht ganzzahliger Gruppenwert gerundet wird.",
+  "PF2E_MARKET_FORGE.Settings.MarketListLimit.Name": "Maximale Einträge pro Marktliste",
+  "PF2E_MARKET_FORGE.Settings.MarketListLimit.Hint": "Begrenzt, wie viele Treffer gleichzeitig in den Listen für Ausrüstung und Zaubergegenstände angezeigt werden. Suche und Filter werden weiterhin auf den vollständigen Katalog angewendet.",
+  "PF2E_MARKET_FORGE.Rounding.floor": "Abrunden",
+  "PF2E_MARKET_FORGE.Rounding.round": "Mathematisch runden",
+  "PF2E_MARKET_FORGE.Rounding.ceil": "Aufrunden",
+  "PF2E_MARKET_FORGE.LevelCalculation.Fixed": "Festgelegt: Stufe {level}",
+  "PF2E_MARKET_FORGE.LevelCalculation.Party": "Basis {raw} → {rounding}: {rounded} · Offset {offset} → Maximum {maximum}"
 }

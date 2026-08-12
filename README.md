@@ -2,7 +2,7 @@
 
 PF2E Market Forge is a Foundry VTT module for Pathfinder 2e that turns buying and selling equipment into a rules-aware market workflow for characters and the Party stash.
 
-## Milestone 6
+## Milestone 6.2
 
 Milestone 6 adds the first complete **spell-item purchase workflow** on top of the existing real buy/sell loop.
 
@@ -36,13 +36,13 @@ The initial profile uses:
 
 - Items: `pf2e.equipment-srd`
 - Spells: `pf2e.spells-srd`
-- Maximum level: average party level, rounded down
+- Maximum level: configurable by the GM; default is average party level, rounded down
 - Rarity: common enabled; uncommon, rare, and unique displayed as unavailable
 - Buy multiplier: 100%
 - Sell multiplier: 50%
 - Full-value treasure sale categories: art objects, gems, and materials
 
-A dedicated profile/source configuration UI is planned after the core market workflow is working end to end.
+The level-limit controls are now exposed as world settings. A dedicated profile/source configuration UI for compendia, rarities, pricing, and named markets remains planned.
 
 ## Development
 
@@ -53,3 +53,12 @@ npm test
 ```
 
 The test suite does not require a running Foundry instance.
+
+
+## Market level settings
+
+Milestone 6.1 adds GM-controlled world settings under **Configure Settings → Module Settings → PF2E Market Forge**. The maximum purchasable item level can be fixed, based on the party average/highest/lowest character level, or unlimited. Party-derived modes support a configurable integer offset and floor/normal/ceil rounding. The Market Forge header shows the currently resolved calculation for the actor/party that opened the market.
+
+## Milestone 6.2
+
+A GM world setting now controls the maximum number of entries displayed in the equipment and spell-item catalog lists. The default is 150 and the supported setting range is 25–500. Filtering and searching still run against the full catalog before the visible result list is truncated.

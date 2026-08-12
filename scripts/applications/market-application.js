@@ -8,6 +8,7 @@ import { SaleInventoryService } from "../inventory/sale-inventory-service.js";
 import { evaluateAvailability } from "../market/availability-service.js";
 import { resolveMarketMaximumForActor } from "../market/market-level-context.js";
 import { createDefaultMarketProfile } from "../market/profile-defaults.js";
+import { applyMarketLevelSettings, readMarketLevelSettings } from "../market/profile-settings.js";
 import { CurrencyAdapter } from "../pf2e/currency-adapter.js";
 import { InventoryAdapter } from "../pf2e/inventory-adapter.js";
 import { SpellItemAdapter } from "../pf2e/spell-item-adapter.js";
@@ -18,6 +19,7 @@ import { TransactionService } from "../transactions/transaction-service.js";
 import { createCatalogViewState, toggleExpandedUuid, updateCatalogViewState } from "./catalog-view-state.js";
 import { buildTabState, initialTabFromMode, normalizeMarketTab } from "./market-window-state.js";
 import { createSpellViewState, updateSpellViewState } from "./spell-view-state.js";
+import { readMarketListLimit } from "../settings/list-limit.js";
 
 const { ApplicationV2, HandlebarsApplicationMixin } = foundry.applications.api;
 
@@ -164,11 +166,15 @@ export class MarketApplication extends HandlebarsApplicationMixin(ApplicationV2)
 
   async _prepareContext(options) {
     const context = await super._prepareContext(options);
+    if (this.#profile?.id === "default") {
+      this.#profile = applyMarketLevelSettings(this.#profile, readMarketLevelSettings());
+    }
     const actor = this.#actor;
     const tabs = buildTabState(this.#activeTab);
     const levelContext = this.#resolveLevelContext();
     const maximumItemLevel = levelContext.result?.maximumItemLevel ?? null;
     const balance = actor ? await this.#safeBalance(actor.uuid) : 0;
+    const listLimit = readMarketListLimit();
 
     let catalog = emptyCatalogResult();
     if (tabs.buy.active) {
@@ -176,7 +182,7 @@ export class MarketApplication extends HandlebarsApplicationMixin(ApplicationV2)
         profile: this.#profile,
         maximumItemLevel,
         filters: this.#catalogFilters,
-        limit: 150
+        limit: listLimit
       });
     }
 
@@ -188,7 +194,7 @@ export class MarketApplication extends HandlebarsApplicationMixin(ApplicationV2)
       spellCatalog = await this.#spellCatalogService.search({
         profile: this.#profile,
         filters: this.#spellView,
-        limit: 150
+        limit: listLimit
       });
       spellBuilder = await this.#prepareSpellBuilder(spellCatalog, maximumItemLevel);
     }
@@ -238,7 +244,7 @@ export class MarketApplication extends HandlebarsApplicationMixin(ApplicationV2)
       sellTab: tabs.sell,
       cartTab: tabs.cart,
       inventoryCount: this.#physicalItemCount(actor),
-      milestone: "6",
+      milestone: "6.2",
       readOnlyMilestone: false,
       catalog: {
         ...catalog,
@@ -290,7 +296,8 @@ export class MarketApplication extends HandlebarsApplicationMixin(ApplicationV2)
       checkout: this.#prepareCheckoutState(),
       marketLevelContext: {
         partyName: levelContext.party?.name ?? null,
-        memberLevels: levelContext.memberLevels.join(", ")
+        memberLevels: levelContext.memberLevels.join(", "),
+        calculationLabel: this.#levelCalculationLabel(levelContext)
       }
     });
   }
@@ -1109,6 +1116,30 @@ export class MarketApplication extends HandlebarsApplicationMixin(ApplicationV2)
     } catch (_error) {
       // Enriched inline links remain usable even when no optional PF2e binder is exposed.
     }
+  }
+
+  #levelCalculationLabel(levelContext) {
+    const limit = this.#profile?.availability?.levelLimit;
+    const result = levelContext?.result;
+    if (!limit || limit.mode === "unlimited" || !result) {
+      return game.i18n.localize("PF2E_MARKET_FORGE.Unlimited");
+    }
+
+    if (limit.mode === "fixed") {
+      return game.i18n.format("PF2E_MARKET_FORGE.LevelCalculation.Fixed", {
+        level: result.maximumItemLevel
+      });
+    }
+
+    const raw = Number.isInteger(result.rawValue) ? String(result.rawValue) : result.rawValue.toFixed(1);
+    const offset = result.offset === 0 ? "0" : result.offset > 0 ? `+${result.offset}` : String(result.offset);
+    return game.i18n.format("PF2E_MARKET_FORGE.LevelCalculation.Party", {
+      raw,
+      rounded: result.roundedValue,
+      rounding: game.i18n.localize(`PF2E_MARKET_FORGE.Rounding.${limit.rounding}`),
+      offset,
+      maximum: result.maximumItemLevel
+    });
   }
 
   #resolveLevelContext() {

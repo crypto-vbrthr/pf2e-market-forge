@@ -27,13 +27,15 @@ globalThis.game = {
     format: (key, data = {}) => `${key}:${JSON.stringify(data)}`
   },
   actors: { party: null },
-  user: { id: "User.test" }
+  user: { id: "User.test" },
+  settings: { get: (_namespace, key) => { if (key === "marketListLimit") return 200; throw new Error("not registered in unit test"); } }
 };
 
 describe("ApplicationV2 shell", () => {
-  it("loads Milestone 6 catalog and empty purchase-cart context", async () => {
+  it("loads Milestone 6.2 catalog with the configured list limit and empty purchase-cart context", async () => {
     const { MarketApplication } = await import("../scripts/applications/market-application.js");
     let searched = false;
+    let receivedLimit = null;
     const app = new MarketApplication({
       actor: {
         uuid: "Actor.test",
@@ -45,8 +47,9 @@ describe("ApplicationV2 shell", () => {
       },
       launchOptions: { initialMode: "buy" },
       catalogService: {
-        async search() {
+        async search(options) {
           searched = true;
+          receivedLimit = options.limit;
           return {
             entries: [], total: 0, truncated: false,
             facets: { categories: [], levels: [], rarities: [], sources: [] },
@@ -65,7 +68,8 @@ describe("ApplicationV2 shell", () => {
     assert.equal(context.catalog.hasEntries, false);
     assert.equal(context.cart.count, 0);
     assert.equal(context.cart.quotedTotal, 0);
-    assert.equal(context.milestone, "6");
+    assert.equal(context.milestone, "6.2");
+    assert.equal(receivedLimit, 200);
     assert.equal(searched, true);
     assert.equal(MarketApplication.PARTS.main.template, "modules/pf2e-market-forge/templates/market.hbs");
   });

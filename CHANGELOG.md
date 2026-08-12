@@ -1,5 +1,22 @@
 # Changelog
 
+## 0.0.10 - Milestone 6.2
+
+- Added a GM world setting for the maximum number of entries shown in market catalog lists.
+- The setting applies to both equipment and spell-item catalog results.
+- Search and filters continue to operate on the complete indexed catalog before the display limit is applied.
+- Default remains 150 entries; configurable from 25 to 500.
+- Added registration and normalization regression tests.
+
+## 0.0.9 - Milestone 6.1
+
+- Added GM world settings for market item-level calculation mode.
+- Added fixed item-level mode, party average/highest/lowest modes, and unlimited mode.
+- Added configurable party-level offset and floor/normal/ceil rounding.
+- The default market profile now reads these settings when Market Forge opens and on subsequent renders.
+- Added a live calculation summary to the Market Forge header.
+- Catalog, scroll/wand configuration, cart validation, and checkout all continue to use the same resolved maximum item level.
+
 ## 0.0.8 - Milestone 6
 
 - Added a spell catalog backed by configured PF2e spell compendia.

@@ -211,5 +211,20 @@
   "PF2E_MARKET_FORGE.Tradition.divine": "Divine",
   "PF2E_MARKET_FORGE.Tradition.occult": "Occult",
   "PF2E_MARKET_FORGE.Tradition.primal": "Primal",
-  "PF2E_MARKET_FORGE.Milestone6Footer": "Milestone 6: scrolls and ordinary wands can be generated from approved spells at a selected rank, added to the cart, and purchased through the same protected checkout path."
+  "PF2E_MARKET_FORGE.Milestone6Footer": "Milestone 6.1: buying, selling, scrolls, and ordinary wands use the same protected market logic; the maximum item level is now GM-configurable.",
+  "PF2E_MARKET_FORGE.Settings.MarketLevelMode.Name": "Maximum item level: calculation",
+  "PF2E_MARKET_FORGE.Settings.MarketLevelMode.Hint": "Determines whether the market cap is derived from the party, fixed to a specific value, or removed entirely.",
+  "PF2E_MARKET_FORGE.Settings.MarketFixedLevel.Name": "Fixed maximum item level",
+  "PF2E_MARKET_FORGE.Settings.MarketFixedLevel.Hint": "Used only when “Fixed item level” is selected as the calculation mode.",
+  "PF2E_MARKET_FORGE.Settings.MarketLevelOffset.Name": "Market level modifier",
+  "PF2E_MARKET_FORGE.Settings.MarketLevelOffset.Hint": "Added after rounding for party-derived modes. Example: +1 allows items one level above the resolved party level.",
+  "PF2E_MARKET_FORGE.Settings.MarketLevelRounding.Name": "Party-level rounding",
+  "PF2E_MARKET_FORGE.Settings.MarketLevelRounding.Hint": "Controls how a fractional party-derived value is rounded.",
+  "PF2E_MARKET_FORGE.Settings.MarketListLimit.Name": "Maximum entries per market list",
+  "PF2E_MARKET_FORGE.Settings.MarketListLimit.Hint": "Limits how many results are displayed at once in the equipment and spell-item lists. Search and filters still apply to the complete catalog.",
+  "PF2E_MARKET_FORGE.Rounding.floor": "Round down",
+  "PF2E_MARKET_FORGE.Rounding.round": "Round normally",
+  "PF2E_MARKET_FORGE.Rounding.ceil": "Round up",
+  "PF2E_MARKET_FORGE.LevelCalculation.Fixed": "Fixed at level {level}",
+  "PF2E_MARKET_FORGE.LevelCalculation.Party": "Base {raw} → {rounding}: {rounded} · Offset {offset} → Maximum {maximum}"
 }
