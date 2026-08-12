@@ -53,6 +53,20 @@ describe("Sale inventory contract", () => {
     assert.equal(mapOwnedItem(owned).baseUnitPrice, 10);
   });
 
+  it("keeps grouped prices sellable even when one unit is worth less than one copper", () => {
+    const owned = item({
+      price: { value: { copperValue: 1 }, per: 10 },
+      system: {
+        ...item().system,
+        price: { value: { copperValue: 1 }, per: 10 }
+      }
+    });
+    const entry = mapOwnedItem(owned);
+    assert.equal(entry.baseUnitPrice, 0);
+    assert.equal(entry.stackPrice, 1);
+    assert.equal(entry.availability.available, true);
+  });
+
   it("marks treasure categories used by full-value sale pricing", () => {
     const gem = item({
       uuid: "Actor.pc.Item.gem",

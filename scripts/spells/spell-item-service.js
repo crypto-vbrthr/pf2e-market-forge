@@ -1,4 +1,5 @@
 import { assertCopperValue } from "../core/money.js";
+import { parseSpellExtraCost } from "./spell-cost.js";
 
 export const SCROLL_PRICES = Object.freeze({
   1: 400,
@@ -26,7 +27,7 @@ export const WAND_PRICES = Object.freeze({
 });
 
 export class SpellItemService {
-  createDraft({ kind, spellUuid, spellName, baseRank, castRank, rarity = "common", spellSource = null }) {
+  createDraft({ kind, spellUuid, spellName, baseRank, castRank, rarity = "common", spellSource = null, spellCost = "" }) {
     if (!['scroll', 'wand'].includes(kind)) throw new TypeError("Spell item kind must be scroll or wand.");
     assertRank(baseRank, "baseRank");
     assertRank(castRank, "castRank");
@@ -39,7 +40,11 @@ export class SpellItemService {
 
     const itemLevel = kind === "scroll" ? 2 * castRank - 1 : 2 * castRank + 1;
     const table = kind === "scroll" ? SCROLL_PRICES : WAND_PRICES;
-    const baseUnitPrice = assertCopperValue(table[castRank], "spell item price");
+    const tablePrice = assertCopperValue(table[castRank], "spell item price");
+    const parsedCost = parseSpellExtraCost(spellCost);
+    const extraCost = kind === "scroll" && parsedCost.status === "fixed" ? parsedCost.copper : 0;
+    const baseUnitPrice = assertCopperValue(tablePrice + extraCost, "spell item price");
+    const reasons = kind === "scroll" && parsedCost.status === "unsupported" ? ["spell-extra-cost-unsupported"] : [];
 
     return {
       kind,
@@ -50,10 +55,13 @@ export class SpellItemService {
       rarity,
       itemLevel,
       baseUnitPrice,
+      tablePrice,
+      extraCostCopper: extraCost,
+      spellCost: parsedCost,
       spellSource: spellSource ? structuredClone(spellSource) : null,
       availability: {
-        available: true,
-        reasons: []
+        available: reasons.length === 0,
+        reasons
       }
     };
   }

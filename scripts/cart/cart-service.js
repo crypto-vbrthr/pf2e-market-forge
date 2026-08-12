@@ -29,7 +29,11 @@ export class CartService {
     if (existing) {
       existing.quantity += quantity;
       existing.quotedUnitPrice = quote.unitPrice;
-      existing.quotedTotalPrice = assertCopperValue(existing.quotedUnitPrice * existing.quantity);
+      existing.quotedBaseUnitPrice = quote.baseUnitPrice ?? quote.unitPrice;
+      existing.quotedMultiplier = quote.multiplier ?? 1;
+      existing.quotedStackPrice = quote.stackPrice ?? null;
+      existing.quotedPricePer = quote.pricePer ?? 1;
+      existing.quotedTotalPrice = lineTotal(existing.quotedBaseUnitPrice, existing.quotedMultiplier, existing.quantity, existing.quotedStackPrice, existing.quotedPricePer);
       return structuredClone(existing);
     }
 
@@ -40,6 +44,10 @@ export class CartService {
       product: structuredClone(product),
       quantity,
       quotedUnitPrice: quote.unitPrice,
+      quotedBaseUnitPrice: quote.baseUnitPrice ?? quote.unitPrice,
+      quotedMultiplier: quote.multiplier ?? 1,
+      quotedStackPrice: quote.stackPrice ?? null,
+      quotedPricePer: quote.pricePer ?? 1,
       quotedTotalPrice: quote.totalPrice
     };
     lines.push(line);
@@ -51,7 +59,13 @@ export class CartService {
     assertQuantity(quantity);
     const line = this.#requireLine(direction, lineId);
     line.quantity = quantity;
-    line.quotedTotalPrice = assertCopperValue(line.quotedUnitPrice * quantity);
+    line.quotedTotalPrice = lineTotal(
+      line.quotedBaseUnitPrice ?? line.quotedUnitPrice,
+      line.quotedMultiplier ?? 1,
+      quantity,
+      line.quotedStackPrice ?? null,
+      line.quotedPricePer ?? 1
+    );
     return structuredClone(line);
   }
 
@@ -117,7 +131,21 @@ function assertQuote(quote, quantity) {
   if (!quote || typeof quote !== "object") throw new TypeError("A price quote is required.");
   assertCopperValue(quote.unitPrice, "quote.unitPrice");
   assertCopperValue(quote.totalPrice, "quote.totalPrice");
-  if (quote.totalPrice !== quote.unitPrice * quantity) {
-    throw new RangeError("Quote total must equal unit price times quantity.");
+  const baseUnitPrice = quote.baseUnitPrice ?? quote.unitPrice;
+  const multiplier = quote.multiplier ?? 1;
+  assertCopperValue(baseUnitPrice, "quote.baseUnitPrice");
+  if (!Number.isFinite(multiplier) || multiplier < 0) throw new TypeError("Quote multiplier must be non-negative.");
+  if (quote.totalPrice !== lineTotal(baseUnitPrice, multiplier, quantity, quote.stackPrice ?? null, quote.pricePer ?? 1)) {
+    throw new RangeError("Quote total must equal the once-rounded line total.");
   }
 }
+
+function lineTotal(baseUnitPrice, multiplier, quantity, stackPrice = null, pricePer = 1) {
+  const hasStackPrice = Number.isSafeInteger(stackPrice) && stackPrice >= 0;
+  const per = Number.isSafeInteger(pricePer) && pricePer >= 1 ? pricePer : 1;
+  const baseLinePrice = hasStackPrice
+    ? Math.floor((stackPrice * quantity) / per)
+    : baseUnitPrice * quantity;
+  return assertCopperValue(Math.round(baseLinePrice * multiplier));
+}
+

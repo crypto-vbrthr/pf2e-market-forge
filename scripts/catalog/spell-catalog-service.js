@@ -8,6 +8,7 @@ const INDEX_FIELDS = Object.freeze([
   "system.traits.value",
   "system.traits.traditions",
   "system.ritual",
+  "system.cost.value",
   "system.slug"
 ]);
 
@@ -142,6 +143,7 @@ export function mapSpellIndexEntry(row, packId, pack = null) {
     rarity: String(readPath(row, "system.traits.rarity") ?? "common"),
     traditions,
     traits,
+    cost: String(readPath(row, "system.cost.value") ?? ""),
     sourcePack: packId,
     sourceLabel: pack?.metadata?.label ?? pack?.title ?? packId,
     slug: String(readPath(row, "system.slug") ?? "")

@@ -1,5 +1,34 @@
 # Changelog
 
+## 0.0.15 - Authoritative Checkout RPC Hotfix
+
+- Replaced the custom checkout request/response protocol on the raw module socket with Foundry V14 targeted `User#query` RPC to the designated active GM.
+- Registered `pf2e-market-forge.checkout` through `CONFIG.queries` during `init`.
+- Raw `module.pf2e-market-forge` socket traffic is now limited to non-economic broadcasts such as live market-profile changes.
+- Checkout query handlers catch authoritative exceptions and return an immediate structured failure instead of leaving player clients waiting for a 30-second socket timeout.
+- Checkout responses sent back to players are reduced to status, totals, warnings/errors and transaction id; full resolved item and rollback snapshots stay on the authoritative GM client.
+- Added query transport, handler-exception, timeout and profile-broadcast regression tests.
+
+## 0.0.14 - Transaction & Rules Hardening
+
+- Added GM-authoritative real checkout over the module socket.
+- Added cross-client transaction coordination keyed independently to every item/currency actor touched by a checkout.
+- The authoritative GM reloads the current market profile and recomputes current market-level availability immediately before checkout.
+- Client-supplied checkout prices remain non-authoritative and requester claims in the request body are overridden by the transport requester.
+- Added idempotent checkout operation IDs so timeout retries of an unchanged cart do not execute twice.
+- Added operation-ID conflict detection when the same ID is reused with different checkout intent.
+- Broadcast GM market-profile changes to open Market Forge windows on other clients.
+- Corrected price-multiplier rounding so a line total is rounded once after quantity/stack value is known.
+- Preserved PF2e grouped `price.per` semantics in catalog, cart, purchase, and sale pricing.
+- Added zero/no-market-price protection without incorrectly rejecting positive grouped prices whose single-unit floor is 0 cp.
+- Added fixed spell extra-cost parsing for scroll prices; ambiguous/variable/non-monetary spell costs now block automatic scroll generation.
+- Added rank-specific PF2e scroll/wand template capability guards.
+- Added global and actor-level PF2e capability checks before mutation.
+- Implemented the previously stubbed buy/sell permission service.
+- Removed unimplemented public API quote methods instead of exposing throwing stubs.
+- Increased GM checkout response timeout to 30 seconds; retries keep the same operation ID while the cart is unchanged.
+- Added hardening regression coverage for concurrency, authority, idempotency, grouped prices, spell costs, capabilities, zero-price items, permissions, and socket behavior.
+
 ## 0.0.13 - Milestone 7.2 Player Cart Hotfix
 
 - Fixed purchase and sale cart lines failing to be created on player clients where `crypto.randomUUID()` is unavailable.

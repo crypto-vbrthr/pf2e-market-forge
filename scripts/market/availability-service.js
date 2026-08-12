@@ -7,6 +7,10 @@ export function evaluateAvailability(entry, profile, { maximumItemLevel = null, 
 
   if (maximumItemLevel !== null && entry.level > maximumItemLevel) reasons.push("level-too-high");
   if (!profile.availability?.rarities?.[entry.rarity]) reasons.push("rarity-not-allowed");
+  if (sourceKind === "item" && Object.prototype.hasOwnProperty.call(entry, "baseUnitPrice")) {
+    const marketPrice = Number.isSafeInteger(entry.stackPrice) ? entry.stackPrice : entry.baseUnitPrice;
+    if (!Number.isSafeInteger(marketPrice) || marketPrice < 1) reasons.push("no-market-price");
+  }
 
   const configuredSources = sourceKind === "spell"
     ? profile.sources?.spellCompendia

@@ -70,7 +70,7 @@ export function mapOwnedItem(item, { actorUuid = null } = {}) {
   if (item.isInContainer === true || Boolean(item.system?.containerId)) reasons.push("in-container");
   if (hasSubitems(item)) reasons.push("has-subitems");
   if (quantity < 1) reasons.push("no-quantity");
-  if (baseUnitPrice < 1) reasons.push("no-value");
+  if (stackPrice < 1) reasons.push("no-value");
 
   const uuid = String(item.uuid ?? "");
   if (!uuid) return null;

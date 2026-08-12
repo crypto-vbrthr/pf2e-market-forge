@@ -23,11 +23,4 @@ export class MarketForgeAPI {
     return this.#profiles.getDefaultProfile();
   }
 
-  async quotePurchase() {
-    throw new Error("PF2E Market Forge: public purchase quoting is not exposed yet.");
-  }
-
-  async quoteSale() {
-    throw new Error("PF2E Market Forge: public sale quoting is not exposed yet.");
-  }
 }

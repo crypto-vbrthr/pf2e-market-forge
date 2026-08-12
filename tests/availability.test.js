@@ -19,6 +19,20 @@ describe("Availability contract", () => {
     assert.deepEqual(result.reasons, []);
   });
 
+  it("allows a grouped PF2e price even when the floored single-unit value is zero", () => {
+    const result = evaluateAvailability({
+      level: 1,
+      rarity: "common",
+      sourcePack: "pf2e.equipment-srd",
+      baseUnitPrice: 0,
+      stackPrice: 1,
+      pricePer: 10
+    }, profile, { maximumItemLevel: 5 });
+
+    assert.equal(result.available, true);
+    assert.equal(result.reasons.includes("no-market-price"), false);
+  });
+
   it("returns all relevant rejection reasons", () => {
     const result = evaluateAvailability({
       level: 9,

@@ -46,8 +46,8 @@ export class TransactionService {
     this.#now = now;
   }
 
-  async prepare(request, { maximumItemLevel = null, authoritative = false } = {}) {
-    const normalized = normalizeCheckoutRequest(request);
+  async prepare(request, { maximumItemLevel = null, authoritative = false, requestedByUserId = null } = {}) {
+    const normalized = normalizeCheckoutRequest(request, { requestedByUserId });
     const profile = await this.#profileProvider(normalized.profileId);
     if (!profile) throw new RangeError(`Market profile not found: ${normalized.profileId}`);
 
@@ -139,7 +139,7 @@ export class TransactionService {
    * the local actor transaction lock; a stale dry-run plan is never accepted as checkout input.
    */
   async checkout(request, options = {}) {
-    const normalized = normalizeCheckoutRequest(request);
+    const normalized = normalizeCheckoutRequest(request, { requestedByUserId: options.requestedByUserId ?? null });
     const key = transactionLockKey(normalized);
 
     try {

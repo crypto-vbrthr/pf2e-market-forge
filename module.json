@@ -1,8 +1,8 @@
 {
   "id": "pf2e-market-forge",
   "title": "PF2E Market Forge",
-  "description": "Rules-aware PF2e market workflow. Milestone 7.2 fixes player-client cart and checkout ID generation while retaining live market profiles and selectable sources.",
-  "version": "0.0.13",
+  "description": "Rules-aware PF2e market workflow with GM-authoritative targeted checkout, serialized transactions, hardened pricing, spell costs, capabilities, and live market profiles.",
+  "version": "0.0.15",
   "authors": [
     {
       "name": "Bully"
@@ -21,6 +21,7 @@
       }
     ]
   },
+  "socket": true,
   "esmodules": [
     "scripts/main.js"
   ],

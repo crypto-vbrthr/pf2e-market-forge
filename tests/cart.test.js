@@ -89,3 +89,36 @@ describe("Sale cart contract", () => {
     assert.equal(cart.getState().sellLines.length, 0);
   });
 });
+
+describe("Cart fractional-copper display contract", () => {
+  it("preserves an authoritative once-rounded line total when quantities change", async () => {
+    const { PriceService } = await import("../scripts/pricing/price-service.js");
+    const { createDefaultMarketProfile } = await import("../scripts/market/profile-defaults.js");
+    const pricing = new PriceService();
+    const profile = createDefaultMarketProfile();
+    const cart = new CartService();
+    const product = { kind: "item", inventoryItemUuid: "Actor.hero.Item.tiny", name: "Tiny Item" };
+    const line = cart.add({ direction: "sell", product, quantity: 2, quote: pricing.quoteSale({ baseUnitPrice: 5 }, 2, profile) });
+    assert.equal(cart.getQuotedTotal("sell"), 5);
+    cart.setQuantity("sell", line.id, 4);
+    assert.equal(cart.getQuotedTotal("sell"), 10);
+  });
+});
+
+
+describe("Cart grouped-price contract", () => {
+  it("recomputes a price.per line from the declared stack price when quantity changes", async () => {
+    const { PriceService } = await import("../scripts/pricing/price-service.js");
+    const { createDefaultMarketProfile } = await import("../scripts/market/profile-defaults.js");
+    const pricing = new PriceService();
+    const profile = createDefaultMarketProfile();
+    const cart = new CartService();
+    const product = { kind: "item", sourceUuid: "Compendium.test.Item.bundle", name: "Bundle" };
+    const quote = pricing.quotePurchase({ baseUnitPrice: 0, stackPrice: 1, pricePer: 10 }, 1, profile);
+    const line = cart.add({ direction: "buy", product, quantity: 1, quote });
+
+    assert.equal(cart.getQuotedTotal("buy"), 0);
+    cart.setQuantity("buy", line.id, 10);
+    assert.equal(cart.getQuotedTotal("buy"), 1);
+  });
+});

@@ -139,3 +139,13 @@ describe("CatalogService contract", () => {
     assert.match(result.sources[0].error, /Compendium not found/);
   });
 });
+
+it("marks physical compendium items without a positive market price unavailable", async () => {
+  const calls = { count: 0 };
+  const pack = makePack("world.priceless", [row({ id: "plot", name: "Plot Relic", price: {} })], calls);
+  const service = new CatalogService({ packProvider: () => new Map([[pack.collection, pack]]) });
+  const profile = createDefaultMarketProfile({ sources: { itemCompendia: [pack.collection] } });
+  const result = await service.search({ profile, maximumItemLevel: 20 });
+  assert.equal(result.entries[0].availability.available, false);
+  assert.ok(result.entries[0].availability.reasons.includes("no-market-price"));
+});

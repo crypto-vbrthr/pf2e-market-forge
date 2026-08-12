@@ -3,6 +3,7 @@ import { discoverItemCompendia, prepareCompendiumChoices } from "../settings/com
 import { createDefaultMarketProfile } from "../market/profile-defaults.js";
 import { validateMarketProfile } from "../market/profile-validator.js";
 import { WorldMarketProfileService } from "../market/world-profile-service.js";
+import { getMarketSocket } from "../socket/market-socket.js";
 
 const api = globalThis.foundry?.applications?.api ?? {};
 const BaseApplicationV2 = api.ApplicationV2 ?? class {};
@@ -181,6 +182,7 @@ export class MarketProfilesApplication extends withHandlebars(BaseApplicationV2)
       this.#dirty = false;
       notify("info", "PF2E_MARKET_FORGE.Profiles.Deleted");
       globalThis.Hooks?.callAll?.(`${MODULE_ID}.profilesChanged`, deletedProfileId);
+      getMarketSocket().broadcastProfilesChanged(deletedProfileId);
       this.render();
     } catch (error) {
       console.error(`${MODULE_ID} | Could not delete market profile`, error);
@@ -195,6 +197,7 @@ export class MarketProfilesApplication extends withHandlebars(BaseApplicationV2)
       await this.#service.setDefaultProfileId(this.#draft.id);
       notify("info", "PF2E_MARKET_FORGE.Profiles.DefaultSet");
       globalThis.Hooks?.callAll?.(`${MODULE_ID}.profilesChanged`, this.#draft.id);
+      getMarketSocket().broadcastProfilesChanged(this.#draft.id);
       this.render();
     } catch (error) {
       console.error(`${MODULE_ID} | Could not set default market profile`, error);
@@ -218,6 +221,7 @@ export class MarketProfilesApplication extends withHandlebars(BaseApplicationV2)
       this.#dirty = false;
       notify("info", "PF2E_MARKET_FORGE.Profiles.Saved");
       globalThis.Hooks?.callAll?.(`${MODULE_ID}.profilesChanged`, normalized.id);
+      getMarketSocket().broadcastProfilesChanged(normalized.id);
       if (rerender) this.render();
       return true;
     } catch (error) {

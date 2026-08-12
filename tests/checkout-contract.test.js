@@ -10,6 +10,7 @@ describe("Checkout request contract", () => {
       itemActorUuid: "Actor.pc",
       currencyActorUuid: "Actor.party",
       requestedByUserId: "User.player",
+      operationId: "op-123",
       total: 1,
       lines: [{
         quantity: 2,
@@ -28,6 +29,7 @@ describe("Checkout request contract", () => {
     });
 
     assert.equal("total" in normalized, false);
+    assert.equal(normalized.operationId, "op-123");
     assert.equal("quotedUnitPrice" in normalized.lines[0], false);
     assert.deepEqual(normalized.lines[0].product, {
       kind: "item",
@@ -46,4 +48,16 @@ describe("Checkout request contract", () => {
       lines: []
     }));
   });
+});
+
+it("allows an authoritative layer to override a client-claimed requester identity", () => {
+  const normalized = normalizeCheckoutRequest({
+    direction: "buy",
+    profileId: "default",
+    itemActorUuid: "Actor.pc",
+    currencyActorUuid: "Actor.pc",
+    requestedByUserId: "User.spoofed",
+    lines: [{ quantity: 1, product: { kind: "item", sourceUuid: "Compendium.market.Item.one" } }]
+  }, { requestedByUserId: "User.actual" });
+  assert.equal(normalized.requestedByUserId, "User.actual");
 });

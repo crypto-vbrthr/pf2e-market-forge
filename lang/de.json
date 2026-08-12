@@ -276,5 +276,18 @@
   "PF2E_MARKET_FORGE.Profiles.DefaultSet": "Standardmarkt geändert.",
   "PF2E_MARKET_FORGE.Profiles.Manage": "Marktprofile verwalten",
   "PF2E_MARKET_FORGE.Profiles.CartClearedOnSwitch": "Beim Wechsel des Marktprofils wurden die Warenkörbe geleert, damit keine Preise oder Verfügbarkeiten des vorherigen Marktes übernommen werden.",
-  "PF2E_MARKET_FORGE.Errors.CartActionFailed": "Der Warenkorb konnte nicht aktualisiert werden. Details stehen in der Browserkonsole."
+  "PF2E_MARKET_FORGE.Errors.CartActionFailed": "Der Warenkorb konnte nicht aktualisiert werden. Details stehen in der Browserkonsole.",
+  "PF2E_MARKET_FORGE.Availability.no-market-price": "Kein regulärer Marktpreis vorhanden",
+  "PF2E_MARKET_FORGE.Availability.spell-extra-cost-unsupported": "Die zusätzlichen Zauberkosten können nicht sicher automatisch berechnet werden",
+  "PF2E_MARKET_FORGE.TransactionError.authority-unavailable": "Kein aktiver Spielleiter steht für den autoritativen Checkout zur Verfügung.",
+  "PF2E_MARKET_FORGE.TransactionError.authority-timeout": "Der Spielleiter-Checkout hat nicht rechtzeitig geantwortet. Die Transaktion kann noch laufen; ein erneuter Versuch mit unverändertem Warenkorb wird sicher derselben Operation zugeordnet.",
+  "PF2E_MARKET_FORGE.TransactionError.requester-unavailable": "Der anfragende Benutzer ist nicht mehr verfügbar.",
+  "PF2E_MARKET_FORGE.TransactionError.market-profile-not-found": "Das verwendete Marktprofil existiert nicht mehr.",
+  "PF2E_MARKET_FORGE.TransactionError.pf2e-incompatible": "Die aktuelle PF2e-Version stellt eine benötigte Inventar-Schnittstelle nicht bereit.",
+  "PF2E_MARKET_FORGE.TransactionError.invalid-request": "Die Checkout-Anfrage ist ungültig.",
+  "PF2E_MARKET_FORGE.TransactionError.actor-not-found": "Inventar oder Geldquelle wurde nicht gefunden.",
+  "PF2E_MARKET_FORGE.Capability.Fatal": "Market Forge hat eine inkompatible PF2e-Schnittstelle erkannt. Schreibende Markttransaktionen wurden nicht gestartet; Details stehen in der Konsole.",
+  "PF2E_MARKET_FORGE.Availability.pf2e-incompatible": "PF2e stellt für diesen Zaubergegenstand und Grad keine kompatible Basisvorlage bereit",
+  "PF2E_MARKET_FORGE.TransactionError.operation-id-conflict": "Die Checkout-Operation wurde mit derselben ID, aber verändertem Inhalt erneut gesendet.",
+  "PF2E_MARKET_FORGE.TransactionError.authority-error": "Die Anfrage an den autoritativen Spielleiter ist fehlgeschlagen. Details stehen gegebenenfalls darunter und in der Konsole des Spielleiters."
 }

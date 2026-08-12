@@ -276,5 +276,18 @@
   "PF2E_MARKET_FORGE.Profiles.DefaultSet": "Default market changed.",
   "PF2E_MARKET_FORGE.Profiles.Manage": "Manage market profiles",
   "PF2E_MARKET_FORGE.Profiles.CartClearedOnSwitch": "The carts were cleared when switching market profiles so prices and availability from the previous market are not carried over.",
-  "PF2E_MARKET_FORGE.Errors.CartActionFailed": "The cart could not be updated. Details are available in the browser console."
+  "PF2E_MARKET_FORGE.Errors.CartActionFailed": "The cart could not be updated. Details are available in the browser console.",
+  "PF2E_MARKET_FORGE.Availability.no-market-price": "No regular market price is available",
+  "PF2E_MARKET_FORGE.Availability.spell-extra-cost-unsupported": "The spell’s additional cost cannot be calculated safely and automatically",
+  "PF2E_MARKET_FORGE.TransactionError.authority-unavailable": "No active GM is available for authoritative checkout.",
+  "PF2E_MARKET_FORGE.TransactionError.authority-timeout": "The GM-authoritative checkout did not answer in time. The transaction may still be running; retrying with the unchanged cart is safely tied to the same operation.",
+  "PF2E_MARKET_FORGE.TransactionError.requester-unavailable": "The requesting user is no longer available.",
+  "PF2E_MARKET_FORGE.TransactionError.market-profile-not-found": "The selected market profile no longer exists.",
+  "PF2E_MARKET_FORGE.TransactionError.pf2e-incompatible": "The current PF2e version does not expose a required inventory capability.",
+  "PF2E_MARKET_FORGE.TransactionError.invalid-request": "The checkout request is invalid.",
+  "PF2E_MARKET_FORGE.TransactionError.actor-not-found": "The inventory or currency actor could not be found.",
+  "PF2E_MARKET_FORGE.Capability.Fatal": "Market Forge detected an incompatible PF2e interface. Writable market transactions were not started; see the console for details.",
+  "PF2E_MARKET_FORGE.Availability.pf2e-incompatible": "PF2e does not provide a compatible base template for this spell item and rank",
+  "PF2E_MARKET_FORGE.TransactionError.operation-id-conflict": "The checkout operation was retried with the same ID but different contents.",
+  "PF2E_MARKET_FORGE.TransactionError.authority-error": "The request to the authoritative GM failed. Additional details may be shown below and in the GM console."
 }
