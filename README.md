@@ -2,9 +2,9 @@
 
 PF2E Market Forge is a Foundry VTT module for Pathfinder 2e that turns buying and selling equipment into a rules-aware market workflow for characters and the Party stash.
 
-## Milestone 7
+## Milestone 7.1
 
-Milestone 7 turns the single global market into persistent **named market profiles**.
+Milestone 7.1 keeps the Milestone 7 profile system and adds live synchronization between the profile manager and an already-open Market Forge window. Milestone 7 turns the single global market into persistent **named market profiles**.
 
 ### Available now
 
@@ -17,6 +17,7 @@ Milestone 7 turns the single global market into persistent **named market profil
 - Search and filtering operate only on the compendia configured for the currently active market.
 - Existing M6.x level settings are migrated into the initial default profile on first M7 load.
 - Switching profiles clears both carts so stale prices and availability cannot bleed from one market into another.
+- Newly saved, renamed, defaulted, or deleted profiles refresh the selector in an already-open Market Forge window immediately.
 
 ### Still intentionally inactive
 

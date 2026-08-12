@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.0.12 - Milestone 7.1 Hotfix
+
+- Market Forge now listens for profile changes while its window is already open.
+- Saving a newly created market profile immediately refreshes the market-profile selector; closing and reopening Market Forge is no longer required.
+- Renames and edits of the active profile are reflected immediately.
+- Changing the default profile refreshes the selector state immediately.
+- Deleting a profile refreshes open Market Forge windows and falls back safely if the active profile was deleted.
+- Hook listeners are removed when the Market Forge window closes.
+- Added a live-profile-refresh regression test.
+
 ## 0.0.11 - Milestone 7
 
 - Added persistent named market profiles stored as world configuration.

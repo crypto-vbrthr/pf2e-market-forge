@@ -90,7 +90,7 @@ export class MarketProfilesApplication extends withHandlebars(BaseApplicationV2)
       valid: validation.valid,
       validationErrors: validation.errors,
       canDelete: profiles.length > 1 || !profiles.some((profile) => profile.id === draft.id),
-      milestone: "7"
+      milestone: "7.1"
     });
   }
 
@@ -170,15 +170,17 @@ export class MarketProfilesApplication extends withHandlebars(BaseApplicationV2)
 
   async #deleteProfile() {
     if (!this.#draft) return;
+    const deletedProfileId = this.#draft.id;
     try {
-      const persisted = this.#service.getProfile(this.#draft.id);
-      const deleted = persisted ? await this.#service.deleteProfile(this.#draft.id) : true;
+      const persisted = this.#service.getProfile(deletedProfileId);
+      const deleted = persisted ? await this.#service.deleteProfile(deletedProfileId) : true;
       if (!deleted) return;
       const next = this.#service.getDefaultProfile() ?? this.#service.getProfiles()[0];
       this.#selectedId = next?.id ?? null;
       this.#draft = next ? structuredClone(next) : null;
       this.#dirty = false;
       notify("info", "PF2E_MARKET_FORGE.Profiles.Deleted");
+      globalThis.Hooks?.callAll?.(`${MODULE_ID}.profilesChanged`, deletedProfileId);
       this.render();
     } catch (error) {
       console.error(`${MODULE_ID} | Could not delete market profile`, error);
@@ -192,6 +194,7 @@ export class MarketProfilesApplication extends withHandlebars(BaseApplicationV2)
       if (this.#dirty) await this.#save({ rerender: false });
       await this.#service.setDefaultProfileId(this.#draft.id);
       notify("info", "PF2E_MARKET_FORGE.Profiles.DefaultSet");
+      globalThis.Hooks?.callAll?.(`${MODULE_ID}.profilesChanged`, this.#draft.id);
       this.render();
     } catch (error) {
       console.error(`${MODULE_ID} | Could not set default market profile`, error);

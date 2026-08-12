@@ -73,6 +73,7 @@ export class MarketApplication extends HandlebarsApplicationMixin(ApplicationV2)
   #checkoutState = null;
   #checkoutBusy = false;
   #searchTimer = null;
+  #profilesChangedHookId = null;
 
   constructor({
     actor,
@@ -161,10 +162,20 @@ export class MarketApplication extends HandlebarsApplicationMixin(ApplicationV2)
         );
       }
     });
+
+    this.#registerProfileChangeHook();
   }
 
   get actor() {
     return this.#actor;
+  }
+
+  _onClose(options) {
+    if (this.#profilesChangedHookId !== null) {
+      globalThis.Hooks?.off?.(`${MODULE_ID}.profilesChanged`, this.#profilesChangedHookId);
+      this.#profilesChangedHookId = null;
+    }
+    return super._onClose?.(options);
   }
 
   async _prepareContext(options) {
@@ -254,7 +265,7 @@ export class MarketApplication extends HandlebarsApplicationMixin(ApplicationV2)
       sellTab: tabs.sell,
       cartTab: tabs.cart,
       inventoryCount: this.#physicalItemCount(actor),
-      milestone: "7",
+      milestone: "7.1",
       readOnlyMilestone: false,
       catalog: {
         ...catalog,
@@ -1097,6 +1108,30 @@ export class MarketApplication extends HandlebarsApplicationMixin(ApplicationV2)
     const key = `PF2E_MARKET_FORGE.TransactionError.${error}`;
     const localized = game.i18n.localize(key);
     return localized === key ? String(error) : localized;
+  }
+
+  #registerProfileChangeHook() {
+    const hooks = globalThis.Hooks;
+    if (typeof hooks?.on !== "function") return;
+    this.#profilesChangedHookId = hooks.on(`${MODULE_ID}.profilesChanged`, (changedProfileId) => {
+      void this.#handleProfilesChanged(changedProfileId);
+    });
+  }
+
+  async #handleProfilesChanged(_changedProfileId) {
+    const profiles = this.#profileService.getProfiles();
+    if (profiles.length === 0) return;
+
+    const current = this.#profileService.getProfile(this.#profile?.id);
+    if (current) {
+      this.#profile = current;
+      if (this.rendered) await this.render();
+      return;
+    }
+
+    const fallback = this.#profileService.getDefaultProfile() ?? profiles[0];
+    if (!fallback) return;
+    await this.#switchProfile(fallback.id);
   }
 
   async #switchProfile(profileId) {

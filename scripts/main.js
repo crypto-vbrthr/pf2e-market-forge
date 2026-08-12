@@ -7,7 +7,7 @@ import { registerSettings } from "./settings/register-settings.js";
 import { WorldMarketProfileService } from "./market/world-profile-service.js";
 
 Hooks.once("init", () => {
-  console.log(`${MODULE_ID} | initializing Milestone 7`);
+  console.log(`${MODULE_ID} | initializing Milestone 7.1`);
 
   registerSettings();
   registerCharacterSheetIntegration();
@@ -32,5 +32,5 @@ Hooks.once("ready", async () => {
     }
   }
 
-  console.log(`${MODULE_ID} | Milestone 7 ready`);
+  console.log(`${MODULE_ID} | Milestone 7.1 ready`);
 });

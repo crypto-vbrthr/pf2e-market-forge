@@ -5,7 +5,7 @@ import fs from "node:fs";
 const market = fs.readFileSync(new URL("../templates/market.hbs", import.meta.url), "utf8");
 const profiles = fs.readFileSync(new URL("../templates/market-profiles.hbs", import.meta.url), "utf8");
 
-describe("Milestone 7 profile UI contract", () => {
+describe("Milestone 7.1 profile UI contract", () => {
   it("lets the market switch profiles and gives GMs a profile-manager entry point", () => {
     assert.match(market, /data-market-profile/);
     assert.match(market, /data-market-manage-profiles/);
