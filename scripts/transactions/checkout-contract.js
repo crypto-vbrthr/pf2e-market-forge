@@ -9,14 +9,13 @@ const CLIENT_PRICE_KEYS = new Set([
   "multiplier"
 ]);
 
-export function normalizeCheckoutRequest(request, { requestedByUserId = null } = {}) {
+/** Normalize client-supplied checkout intent without attaching any user identity. */
+export function normalizeCheckoutIntent(request) {
   if (!request || typeof request !== "object") throw new TypeError("Checkout request must be an object.");
-  if (!['buy', 'sell'].includes(request.direction)) throw new TypeError("Checkout direction must be buy or sell.");
+  if (!["buy", "sell"].includes(request.direction)) throw new TypeError("Checkout direction must be buy or sell.");
   if (typeof request.profileId !== "string" || !request.profileId) throw new TypeError("profileId is required.");
   if (typeof request.itemActorUuid !== "string" || !request.itemActorUuid) throw new TypeError("itemActorUuid is required.");
   if (typeof request.currencyActorUuid !== "string" || !request.currencyActorUuid) throw new TypeError("currencyActorUuid is required.");
-  const requester = requestedByUserId ?? request.requestedByUserId;
-  if (typeof requester !== "string" || !requester) throw new TypeError("requestedByUserId is required.");
   const operationId = request.operationId == null ? null : String(request.operationId).trim();
   if (operationId !== null && !operationId) throw new TypeError("operationId must be a non-empty string when provided.");
   if (!Array.isArray(request.lines) || request.lines.length === 0) throw new RangeError("Checkout requires at least one line.");
@@ -26,10 +25,21 @@ export function normalizeCheckoutRequest(request, { requestedByUserId = null } =
     profileId: request.profileId,
     itemActorUuid: request.itemActorUuid,
     currencyActorUuid: request.currencyActorUuid,
-    requestedByUserId: requester,
     operationId,
     lines: request.lines.map(normalizeCheckoutLine)
   };
+}
+
+/**
+ * Attach requester identity supplied by the trusted local/authority layer.
+ * Any requester field inside the client request body is deliberately ignored.
+ */
+export function normalizeCheckoutRequest(request, { requestedByUserId = null } = {}) {
+  const intent = normalizeCheckoutIntent(request);
+  if (typeof requestedByUserId !== "string" || !requestedByUserId) {
+    throw new TypeError("Authoritative requestedByUserId is required.");
+  }
+  return { ...intent, requestedByUserId };
 }
 
 function normalizeCheckoutLine(line) {

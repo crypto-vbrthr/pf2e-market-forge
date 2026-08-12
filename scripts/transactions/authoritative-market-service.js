@@ -1,17 +1,12 @@
-import { CatalogService } from "../catalog/catalog-service.js";
-import { SpellCatalogService } from "../catalog/spell-catalog-service.js";
-import { SaleInventoryService } from "../inventory/sale-inventory-service.js";
-import { evaluateAvailability } from "../market/availability-service.js";
 import { resolveMarketMaximumForActor } from "../market/market-level-context.js";
 import { WorldMarketProfileService } from "../market/world-profile-service.js";
+import { MarketProductResolver } from "../market/product-resolver.js";
 import { CurrencyAdapter } from "../pf2e/currency-adapter.js";
 import { InventoryAdapter } from "../pf2e/inventory-adapter.js";
-import { hasSpellItemBaseConfig, PF2eCapabilityService } from "../pf2e/capabilities.js";
-import { SpellItemAdapter } from "../pf2e/spell-item-adapter.js";
+import { PF2eCapabilityService } from "../pf2e/capabilities.js";
 import { MarketPermissionService } from "../permissions/permission-service.js";
 import { PriceService } from "../pricing/price-service.js";
 import { ReceiptService } from "../receipts/receipt-service.js";
-import { SpellItemService } from "../spells/spell-item-service.js";
 import { normalizeCheckoutRequest } from "./checkout-contract.js";
 import { globalTransactionCoordinator } from "./transaction-coordinator.js";
 
@@ -19,28 +14,24 @@ import { TransactionService } from "./transaction-service.js";
 
 export class AuthoritativeMarketService {
   #profileService;
-  #catalogService;
-  #spellCatalogService;
-  #spellItemService;
-  #spellItemAdapter;
   #currencyAdapter;
   #inventoryAdapter;
-  #saleInventoryService;
   #permissionService;
   #capabilities;
   #coordinator;
   #actorProvider;
   #userProvider;
   #transactionService;
+  #productResolver;
   #operations = new Map();
   #operationTtlMs;
 
   constructor({
     profileService = new WorldMarketProfileService(),
-    catalogService = new CatalogService(),
-    spellCatalogService = new SpellCatalogService(),
-    spellItemService = new SpellItemService(),
-    spellItemAdapter = new SpellItemAdapter(),
+    catalogService = null,
+    spellCatalogService = null,
+    spellItemService = null,
+    spellItemAdapter = null,
     currencyAdapter = new CurrencyAdapter(),
     inventoryAdapter = new InventoryAdapter(),
     saleInventoryService = null,
@@ -52,26 +43,30 @@ export class AuthoritativeMarketService {
     receiptService = new ReceiptService(),
     priceService = new PriceService(),
     transactionService = null,
+    productResolver = null,
     operationTtlMs = 120000
   } = {}) {
     this.#profileService = profileService;
-    this.#catalogService = catalogService;
-    this.#spellCatalogService = spellCatalogService;
-    this.#spellItemService = spellItemService;
-    this.#spellItemAdapter = spellItemAdapter;
     this.#currencyAdapter = currencyAdapter;
     this.#inventoryAdapter = inventoryAdapter;
-    this.#saleInventoryService = saleInventoryService ?? new SaleInventoryService({ inventoryAdapter });
     this.#permissionService = permissionService;
     this.#capabilities = capabilityService;
     this.#coordinator = coordinator;
     this.#actorProvider = actorProvider;
     this.#userProvider = userProvider;
     this.#operationTtlMs = Math.max(1000, Number(operationTtlMs) || 120000);
+    this.#productResolver = productResolver ?? new MarketProductResolver({
+      catalogService: catalogService ?? undefined,
+      spellCatalogService: spellCatalogService ?? undefined,
+      spellItemService: spellItemService ?? undefined,
+      spellItemAdapter: spellItemAdapter ?? undefined,
+      saleInventoryService,
+      inventoryAdapter
+    });
 
     this.#transactionService = transactionService ?? new TransactionService({
       profileProvider: async (profileId) => this.#profileService.getProfile(profileId),
-      productResolver: (product, context) => this.#resolveProduct(product, context),
+      productResolver: (product, context) => this.#productResolver.resolve(product, context),
       priceService,
       balanceProvider: (actorUuid) => this.#currencyAdapter.getBalance(actorUuid),
       currencyAdapter: this.#currencyAdapter,
@@ -148,75 +143,6 @@ export class AuthoritativeMarketService {
     for (const [key, entry] of this.#operations) {
       if (!entry || entry.expiresAt <= now) this.#operations.delete(key);
     }
-  }
-
-  async #resolveProduct(product, { profile, maximumItemLevel, authoritative, direction, itemActorUuid }) {
-    if (product.kind === "item") {
-      if (direction === "sell" || product.inventoryItemUuid) {
-        return this.#saleInventoryService.getEntry(itemActorUuid, product.inventoryItemUuid);
-      }
-      return this.#catalogService.getEntry(product.sourceUuid, { profile, maximumItemLevel, fresh: authoritative });
-    }
-
-    if (direction !== "buy" || !["scroll", "wand"].includes(product.kind)) return null;
-    const spellEntry = await this.#spellCatalogService.getEntry(product.spellUuid, { profile, fresh: authoritative });
-    if (!spellEntry) return null;
-    const spell = await this.#spellCatalogService.getSpell(product.spellUuid);
-    if (!spell) return null;
-
-    const draft = this.#spellItemService.createDraft({
-      kind: product.kind,
-      spellUuid: spellEntry.uuid,
-      spellName: spellEntry.name,
-      baseRank: spellEntry.baseRank,
-      castRank: product.spellRank,
-      rarity: spellEntry.rarity,
-      spellCost: spellEntry.cost
-    });
-    const availability = evaluateAvailability(
-      { level: draft.itemLevel, rarity: spellEntry.rarity, sourcePack: spellEntry.sourcePack },
-      profile,
-      { maximumItemLevel, sourceKind: "spell" }
-    );
-    availability.reasons = [...new Set([...(availability.reasons ?? []), ...(draft.availability?.reasons ?? [])])];
-    availability.available = availability.reasons.length === 0;
-    const enabled = product.kind === "scroll" ? profile.spellItems?.scrolls === true : profile.spellItems?.wands === true;
-    if (!enabled) {
-      availability.available = false;
-      availability.reasons = [...new Set([...availability.reasons, "spell-item-type-disabled"])];
-    }
-    if (!hasSpellItemBaseConfig(product.kind, product.spellRank)) {
-      availability.available = false;
-      availability.reasons = [...new Set([...availability.reasons, "pf2e-incompatible"])];
-    }
-    draft.availability = availability;
-
-    if (!draft.availability.available) {
-      return {
-        uuid: `spell-product:${product.kind}:${product.spellUuid}:${product.spellRank}`,
-        name: spellEntry.name,
-        img: spellEntry.img,
-        level: draft.itemLevel,
-        rarity: spellEntry.rarity,
-        sourcePack: spellEntry.sourcePack,
-        baseUnitPrice: draft.baseUnitPrice,
-        availability: draft.availability,
-        purchaseSource: null
-      };
-    }
-
-    const purchaseSource = await this.#spellItemAdapter.createSource(draft, { spell });
-    return {
-      uuid: `spell-product:${product.kind}:${product.spellUuid}:${product.spellRank}`,
-      name: purchaseSource.name,
-      img: purchaseSource.img ?? spellEntry.img,
-      level: draft.itemLevel,
-      rarity: spellEntry.rarity,
-      sourcePack: spellEntry.sourcePack,
-      baseUnitPrice: draft.baseUnitPrice,
-      availability: draft.availability,
-      purchaseSource
-    };
   }
 }
 

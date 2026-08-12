@@ -51,7 +51,7 @@ globalThis.game = {
 };
 
 describe("ApplicationV2 shell", () => {
-  it("loads Milestone 7.2 catalog with the configured list limit and empty purchase-cart context", async () => {
+  it("loads the configured catalog with the configured list limit and empty purchase-cart context", async () => {
     const { MarketApplication } = await import("../scripts/applications/market-application.js");
     let searched = false;
     let receivedLimit = null;
@@ -87,10 +87,10 @@ describe("ApplicationV2 shell", () => {
     assert.equal(context.catalog.hasEntries, false);
     assert.equal(context.cart.count, 0);
     assert.equal(context.cart.quotedTotal, 0);
-    assert.equal(context.milestone, "7.2");
     assert.equal(receivedLimit, 200);
     assert.equal(searched, true);
     assert.equal(MarketApplication.PARTS.main.template, "modules/pf2e-market-forge/templates/market.hbs");
+    assert.deepEqual(MarketApplication.PARTS.main.scrollable, [".market-forge-content"]);
   });
 
   it("refreshes an already-open market when market profiles change", async () => {

@@ -1,47 +1,23 @@
 # PF2E Market Forge
 
-## 0.0.15 Checkout transport hotfix
+**Version:** `0.1.0`
 
-Player checkout requests now use Foundry V14 targeted User Queries (`game.users.activeGM.query`) instead of a hand-built request/response protocol over the raw module socket. This provides an awaited response from the selected GM client and addresses the observed 30-second player timeout when selling from shared Party inventory. The module socket remains enabled for live market-profile broadcasts.
+PF2E Market Forge is a Foundry VTT module for Pathfinder 2e that turns equipment buying and selling into a rules-aware marketplace workflow for characters and the Party stash.
 
-PF2E Market Forge is a Foundry VTT module for Pathfinder 2e that turns buying and selling equipment into a rules-aware market workflow for characters and the Party stash.
+## v0.1.0 release
 
-## 0.0.15 — Transaction & Rules Hardening
+The first stable Market Forge release contains the fully tested feature set without changing the economic rules or transaction flow validated during release testing. The v0.1 contracts are now frozen for the release line.
 
-This build hardens the economic core before release-candidate work. Player checkout is no longer allowed to mutate inventory and currency independently on each client. Real buy/sell transactions are routed to one active GM authority, serialized across every actor touched by the transaction, freshly revalidated, and only then committed through the PF2e adapter boundary.
+### Contract and transaction hardening
 
-### Transaction hardening
-
-- Real player checkout is routed through Foundry V14 targeted User Queries to the designated active GM authority.
-- The GM reloads the current market profile and recomputes the current maximum item level before every real checkout.
-- The GM re-resolves current catalog entries, spells, owned sale items, quantities, prices, permissions, and actor capabilities before mutation.
-- Cross-client transactions are serialized on **both** the item actor and currency actor. Transactions sharing either actor cannot mutate that actor concurrently.
-- Unrelated actor sets can still transact independently.
-- Checkout requests contain intent and quantity, not authoritative prices.
-- The requester claimed inside the checkout body is ignored by the authoritative service; the transport-provided requester is used for permission validation.
-- Real checkout uses an operation ID. A timeout retry with an unchanged cart is deduplicated instead of executing the same purchase twice.
-- Reusing the same operation ID with different checkout contents is rejected.
-- Profile changes saved by the GM are broadcast to already-open Market Forge windows on other clients.
-- The existing compensating rollback remains in place for failed inventory/currency mutations.
-
-### Rules hardening
-
-- Market multipliers are applied to the complete line value and the final copper total is rounded once, preventing per-unit rounding errors from multiplying across a stack.
-- PF2e grouped prices using `price.per` are preserved. A price declared for a bundle is evaluated as a bundle instead of being flattened to a lossy single-unit integer first.
-- Physical catalog items with no positive declared market price are disabled instead of becoming free purchases.
-- Sale items with no positive declared value remain blocked. Grouped prices with a positive bundle value remain valid even if one individual unit is worth less than 1 cp.
-- Fixed monetary spell costs are added to generated scroll prices.
-- Variable, non-monetary, or otherwise ambiguous spell costs make automatic scroll generation unavailable rather than silently underpricing the scroll.
-- Ordinary wand table prices are unchanged by spell extra-cost parsing.
-- Missing PF2e scroll/wand base templates are surfaced as incompatibility/availability failures instead of failing halfway through item creation.
-
-### PF2e compatibility guard
-
-At startup Market Forge checks the global PF2e capabilities it relies on. Real checkout also checks the exact target actors immediately before mutation. If required inventory/document capabilities are absent, the transaction is stopped before economic state is changed.
-
-### Security boundary
-
-Foundry V14 targeted User Queries are used as the request/response transport to the designated active GM. The authoritative GM still validates the claimed active user record and actual actor permissions, and never trusts client-supplied prices or market state. The raw package socket is retained only for non-economic broadcasts such as profile refresh notifications.
+- Player checkout remains GM-authoritative and serialized across every inventory/currency Actor touched by the transaction.
+- Checkout requester identity is no longer accepted from the checkout body. Before economic queries, the active GM provisions a short-lived per-user capability token through a separate targeted User query back to that exact Foundry User.
+- Expired requester sessions are automatically reprovisioned once while preserving the checkout operation ID.
+- Client checkout intent and authoritative requester identity are normalized separately.
+- Equipment, sales, scrolls, and wands now use one shared `MarketProductResolver` in both local dry-run and authoritative GM checkout paths.
+- The unused legacy profile `transaction` switches are removed from the v0.1 contract. Revalidation and complete transactions are hard invariants; mixed payment sources remain intentionally inactive.
+- Added a compact public `diagnose()` API for release/support diagnostics without exposing live Foundry Documents.
+- Added German/English localization parity tests and a dedicated `docs/RELEASE_CHECKLIST.md` multiplayer acceptance matrix.
 
 ## Existing market features
 
@@ -49,20 +25,20 @@ Foundry V14 targeted User Queries are used as the request/response transport to 
 - Character and Party/team inventory support.
 - Separate buy/sell carts with quantity editing and totals.
 - Automatic currency deduction/credit and inventory mutation.
-- Rollback and private chat receipts.
-- Expandable item/spell descriptions.
-- Scroll and ordinary wand generation with selectable spell rank.
-- Named market profiles with independent equipment/spell compendia.
-- Per-profile level limits, rarity access, buy/sell multipliers, full-value treasure rules, and scroll/wand availability.
-- Live market-profile selector refresh.
+- Compensating rollback for failed economic writes.
+- Private chat receipts.
+- Expandable item and spell descriptions.
+- Scroll generation through spell rank 10.
+- Standard wand generation through spell rank 9.
+- Heightened spell selection and embedded spell source generation.
+- Fixed monetary spell extra costs on scrolls; ambiguous costs are blocked rather than guessed.
+- Named persistent market profiles with independent equipment/spell compendia.
+- Per-profile item-level limits, rarity access, buy/sell multipliers, full-value treasure rules, and scroll/wand enablement.
+- Live market-profile selector refresh across clients.
 - Configurable maximum visible catalog entries.
 - Inventory-sheet and Actor Directory launch points.
-
-## Still intentionally inactive
-
-- Choosing a different character/Party actor as payment source, purchase recipient, sale source, or proceeds recipient.
-- Real merchant actors and finite merchant stock.
-- Mixed payment sources.
+- PF2e capability guards before economic mutation.
+- GM-authoritative cross-client transaction coordination and idempotent operation IDs.
 
 ## Market profiles
 
@@ -76,16 +52,47 @@ Open **Configure Settings → Module Settings → PF2E Market Forge → Manage M
 - Whether unavailable entries are hidden or shown disabled
 - Purchase and sale multipliers
 - Full-value sale handling for art objects, gems, and materials
-- Scroll and ordinary wand availability
+- Scroll and standard-wand availability
 
 The global **Maximum entries per market list** option remains a world setting because it controls UI result size rather than market economics.
 
-## Development
+## Transaction boundary
 
-Run the contract tests with:
+The cart is always a local draft. Real checkout is freshly resolved and priced by the designated active GM. The GM rechecks the current market profile, Actor state, item/spell data, quantities, currency, permissions, item-level/rarity/source availability, and PF2e write capabilities before mutation.
+
+Transactions touching a shared inventory Actor or currency Actor are serialized. This prevents simultaneous clients from selling the same Party item twice or spending the same Party funds concurrently.
+
+Checkout retries retain a stable operation ID while the cart remains unchanged, preventing a delayed response from causing a duplicate transaction.
+
+## Public API v1
+
+```js
+const marketForge = game.modules.get("pf2e-market-forge").api;
+
+await marketForge.open({ actorUuid: "Actor...", initialMode: "buy" });
+marketForge.getProfiles();
+marketForge.getProfile("default");
+marketForge.getDefaultProfile();
+await marketForge.diagnose();
+await marketForge.diagnose({ actorUuid: "Actor..." });
+```
+
+The diagnostics result is JSON-safe and includes module/system versions, profile summary, PF2e capability status, optional Actor write capability, and current GM transport/session state.
+
+Transaction execution, adapters, plans, and quote engines are intentionally not public v0.1 API.
+
+## Still intentionally inactive
+
+- Choosing a different character/Party Actor as payment source, purchase recipient, sale source, or proceeds recipient.
+- Real merchant Actors and finite merchant stock.
+- Mixed payment sources.
+
+## Development and release validation
+
+Run the automated contract suite with:
 
 ```bash
 npm test
 ```
 
-The automated contract suite does not require a running Foundry instance. Cross-client query transport and serialization should additionally be tested in Foundry with a GM and at least two player clients before RC.
+The Node suite does not replace a real Foundry multiplayer check. The final manual acceptance matrix is in [`docs/RELEASE_CHECKLIST.md`](docs/RELEASE_CHECKLIST.md), including simultaneous Party sales/purchases and requester-session renewal.

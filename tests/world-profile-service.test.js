@@ -30,6 +30,15 @@ describe("world market profile storage", () => {
     assert.equal(profile.availability.levelLimit.fixedLevel, 12);
   });
 
+  it("drops unused legacy transaction switches when reading stored M7 profiles", () => {
+    const legacy = createDefaultMarketProfile({ id: "legacy", name: "Legacy" });
+    legacy.transaction = { allowMixedPaymentSources: true, revalidateOnCheckout: false, requireCompleteTransaction: false };
+    const raw = JSON.stringify({ version: 1, profiles: [legacy] });
+    const [profile] = parseProfiles(raw);
+    assert.equal(profile.id, "legacy");
+    assert.equal("transaction" in profile, false);
+  });
+
   it("serializes and parses validated named profiles", () => {
     const a = createDefaultMarketProfile({ id: "village", name: "Village" });
     const b = createDefaultMarketProfile({ id: "city", name: "City", sources: { itemCompendia: ["world.city-items"] } });

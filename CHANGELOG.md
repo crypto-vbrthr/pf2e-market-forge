@@ -1,5 +1,34 @@
 # Changelog
 
+## 0.1.0 - Initial Release
+
+- Promoted the fully tested `0.1.0-rc.2` codebase to the first stable v0.1 release.
+- Removed release-candidate wording from runtime messages, package metadata, documentation, and diagnostics.
+- Renamed the RC acceptance checklist to `docs/RELEASE_CHECKLIST.md` for the stable release line.
+- No economic, catalog, profile, or transaction behavior changed from `0.1.0-rc.2`.
+
+## 0.1.0-rc.2 - Scroll Position Hotfix
+
+- Preserve the Market Forge content scroll position across ApplicationV2 re-renders.
+- Expanding or collapsing item descriptions no longer jumps the buy, sell, or cart view back to the top.
+- Uses the native HandlebarsApplicationMixin `scrollable` part contract for `.market-forge-content`.
+- Added a regression contract test for the scrollable application part.
+
+
+## 0.1.0-rc.1 - Final Contract & RC Hardening
+
+- Froze the intended v0.1 Market Forge contracts and added an RC acceptance checklist.
+- Replaced client-body requester identity with a short-lived GM-issued per-user checkout session capability. The capability is delivered to the claimed Foundry User through a separate targeted User query and is not returned to the provisioning caller.
+- Checkout queries now carry the session token instead of a requester user id; the GM maps the token back to the requester used for Actor permission checks.
+- Expired requester sessions are reprovisioned automatically once while retaining the checkout operation id.
+- Split pure client `normalizeCheckoutIntent()` from authority-bound `normalizeCheckoutRequest()` so requester identity cannot silently fall back to a payload field.
+- Extracted `MarketProductResolver` and use it for both local dry-run resolution and authoritative GM resolution, removing duplicated item/spell availability logic from the two paths.
+- Removed unused legacy MarketProfile `transaction` switches from the v0.1 contract and canonicalized old stored profiles by dropping those inert fields.
+- Added `game.modules.get("pf2e-market-forge").api.diagnose()` with JSON-safe module, profile, PF2e capability, optional Actor, and transport diagnostics.
+- Added German/English localization parity checks and localized requester-session failures.
+- Removed stale milestone-only context fields from ApplicationV2 preparation.
+- Added shared-product-resolution, requester-session, spoof-resistance, session-renewal, diagnostics, profile-canonicalization, localization, and RC manifest regression coverage.
+
 ## 0.0.15 - Authoritative Checkout RPC Hotfix
 
 - Replaced the custom checkout request/response protocol on the raw module socket with Foundry V14 targeted `User#query` RPC to the designated active GM.
@@ -14,7 +43,7 @@
 - Added GM-authoritative real checkout over the module socket.
 - Added cross-client transaction coordination keyed independently to every item/currency actor touched by a checkout.
 - The authoritative GM reloads the current market profile and recomputes current market-level availability immediately before checkout.
-- Client-supplied checkout prices remain non-authoritative and requester claims in the request body are overridden by the transport requester.
+- Client-supplied checkout prices remain non-authoritative and requester claims in the checkout body are overridden by a separate query-layer requester field. RC1 later replaces that field with a requester-bound session capability.
 - Added idempotent checkout operation IDs so timeout retries of an unchanged cart do not execute twice.
 - Added operation-ID conflict detection when the same ID is reused with different checkout intent.
 - Broadcast GM market-profile changes to open Market Forge windows on other clients.

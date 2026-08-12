@@ -127,20 +127,30 @@ export function normalizeProfiles(profiles, { tolerateInvalid = false } = {}) {
   const seen = new Set();
   const result = [];
   for (const candidate of profiles) {
-    const validation = validateMarketProfile(candidate);
+    const canonical = canonicalizeMarketProfile(candidate);
+    const validation = validateMarketProfile(canonical);
     if (!validation.valid) {
       if (tolerateInvalid) continue;
       throw new Error(`Invalid MarketProfile: ${validation.errors.join(", ")}`);
     }
-    if (seen.has(candidate.id)) {
+    if (seen.has(canonical.id)) {
       if (tolerateInvalid) continue;
-      throw new Error(`Duplicate MarketProfile id: ${candidate.id}`);
+      throw new Error(`Duplicate MarketProfile id: ${canonical.id}`);
     }
-    seen.add(candidate.id);
-    result.push(structuredClone(candidate));
+    seen.add(canonical.id);
+    result.push(canonical);
   }
   if (!tolerateInvalid && result.length === 0) throw new Error("At least one MarketProfile is required.");
   return result;
+}
+
+function canonicalizeMarketProfile(profile) {
+  const canonical = structuredClone(profile);
+  // M0-M7 carried transaction switches which were never implemented as real
+  // profile behavior. Revalidation and complete transactions are hard
+  // invariants; mixed payment sources remain intentionally inactive.
+  delete canonical.transaction;
+  return canonical;
 }
 
 export function createProfileId(name, existingIds = []) {

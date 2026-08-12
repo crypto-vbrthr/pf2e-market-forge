@@ -289,5 +289,7 @@
   "PF2E_MARKET_FORGE.Capability.Fatal": "Market Forge hat eine inkompatible PF2e-Schnittstelle erkannt. Schreibende Markttransaktionen wurden nicht gestartet; Details stehen in der Konsole.",
   "PF2E_MARKET_FORGE.Availability.pf2e-incompatible": "PF2e stellt für diesen Zaubergegenstand und Grad keine kompatible Basisvorlage bereit",
   "PF2E_MARKET_FORGE.TransactionError.operation-id-conflict": "Die Checkout-Operation wurde mit derselben ID, aber verändertem Inhalt erneut gesendet.",
-  "PF2E_MARKET_FORGE.TransactionError.authority-error": "Die Anfrage an den autoritativen Spielleiter ist fehlgeschlagen. Details stehen gegebenenfalls darunter und in der Konsole des Spielleiters."
+  "PF2E_MARKET_FORGE.TransactionError.authority-error": "Die Anfrage an den autoritativen Spielleiter ist fehlgeschlagen. Details stehen gegebenenfalls darunter und in der Konsole des Spielleiters.",
+  "PF2E_MARKET_FORGE.TransactionError.authority-session-unavailable": "Die sichere Sitzung mit dem Spielleiter konnte nicht aufgebaut werden. Bitte versuche den Checkout erneut.",
+  "PF2E_MARKET_FORGE.TransactionError.authority-session-invalid": "Die sichere Sitzung mit dem Spielleiter ist abgelaufen. Market Forge baut sie beim erneuten Versuch automatisch neu auf."
 }

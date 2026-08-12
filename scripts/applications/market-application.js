@@ -10,6 +10,7 @@ import { evaluateAvailability } from "../market/availability-service.js";
 import { resolveMarketMaximumForActor } from "../market/market-level-context.js";
 import { createDefaultMarketProfile } from "../market/profile-defaults.js";
 import { WorldMarketProfileService } from "../market/world-profile-service.js";
+import { MarketProductResolver } from "../market/product-resolver.js";
 import { CurrencyAdapter } from "../pf2e/currency-adapter.js";
 import { InventoryAdapter } from "../pf2e/inventory-adapter.js";
 import { hasAnySpellItemBaseConfig, hasSpellItemBaseConfig } from "../pf2e/capabilities.js";
@@ -43,7 +44,8 @@ export class MarketApplication extends HandlebarsApplicationMixin(ApplicationV2)
 
   static PARTS = {
     main: {
-      template: `modules/${MODULE_ID}/templates/market.hbs`
+      template: `modules/${MODULE_ID}/templates/market.hbs`,
+      scrollable: [".market-forge-content"]
     }
   };
 
@@ -65,6 +67,7 @@ export class MarketApplication extends HandlebarsApplicationMixin(ApplicationV2)
   #saleInventoryService;
   #receiptService;
   #transactionService;
+  #productResolver;
   #checkoutTransport;
   #catalogFilters = createCatalogViewState();
   #spellView = createSpellViewState();
@@ -98,6 +101,7 @@ export class MarketApplication extends HandlebarsApplicationMixin(ApplicationV2)
     saleInventoryService = null,
     receiptService = null,
     transactionService = null,
+    productResolver = null,
     checkoutTransport = null
   } = {}) {
     super();
@@ -124,48 +128,17 @@ export class MarketApplication extends HandlebarsApplicationMixin(ApplicationV2)
     if (this.#activeTab === "sell") this.#cartService.setActiveDirection("sell");
     this.#receiptService = receiptService ?? new ReceiptService({ actorProvider });
     this.#checkoutTransport = checkoutTransport ?? { checkout: (request) => getMarketSocket().requestCheckout(request) };
+    this.#productResolver = productResolver ?? new MarketProductResolver({
+      catalogService: this.#catalogService,
+      spellCatalogService: this.#spellCatalogService,
+      spellItemService: this.#spellItemService,
+      spellItemAdapter: this.#spellItemAdapter,
+      saleInventoryService: this.#saleInventoryService,
+      inventoryAdapter: this.#inventoryAdapter
+    });
     this.#transactionService = transactionService ?? new TransactionService({
       profileProvider: async (profileId) => profileId === this.#profile.id ? this.#profile : null,
-      productResolver: async (product, { profile, maximumItemLevel, authoritative, direction, itemActorUuid }) => {
-        if (product.kind === "item") {
-          if (direction === "sell" || product.inventoryItemUuid) {
-            return this.#saleInventoryService.getEntry(itemActorUuid, product.inventoryItemUuid);
-          }
-          return this.#catalogService.getEntry(product.sourceUuid, { profile, maximumItemLevel, fresh: authoritative });
-        }
-
-        if (direction !== "buy" || !["scroll", "wand"].includes(product.kind)) return null;
-        const spellEntry = await this.#spellCatalogService.getEntry(product.spellUuid, { profile, fresh: authoritative });
-        if (!spellEntry) return null;
-        const spell = await this.#spellCatalogService.getSpell(product.spellUuid);
-        if (!spell) return null;
-        const draft = this.#createSpellDraft(spellEntry, product.kind, product.spellRank, maximumItemLevel);
-        if (!draft.availability.available) {
-          return {
-            uuid: `spell-product:${product.kind}:${product.spellUuid}:${product.spellRank}`,
-            name: spellEntry.name,
-            img: spellEntry.img,
-            level: draft.itemLevel,
-            rarity: spellEntry.rarity,
-            sourcePack: spellEntry.sourcePack,
-            baseUnitPrice: draft.baseUnitPrice,
-            availability: draft.availability,
-            purchaseSource: null
-          };
-        }
-        const purchaseSource = await this.#spellItemAdapter.createSource(draft, { spell });
-        return {
-          uuid: `spell-product:${product.kind}:${product.spellUuid}:${product.spellRank}`,
-          name: purchaseSource.name,
-          img: purchaseSource.img ?? spellEntry.img,
-          level: draft.itemLevel,
-          rarity: spellEntry.rarity,
-          sourcePack: spellEntry.sourcePack,
-          baseUnitPrice: draft.baseUnitPrice,
-          availability: draft.availability,
-          purchaseSource
-        };
-      },
+      productResolver: (product, context) => this.#productResolver.resolve(product, context),
       priceService: this.#priceService,
       balanceProvider: async (actorUuid) => this.#currencyAdapter.getBalance(actorUuid),
       currencyAdapter: this.#currencyAdapter,
@@ -285,7 +258,6 @@ export class MarketApplication extends HandlebarsApplicationMixin(ApplicationV2)
       sellTab: tabs.sell,
       cartTab: tabs.cart,
       inventoryCount: this.#physicalItemCount(actor),
-      milestone: "7.2",
       readOnlyMilestone: false,
       catalog: {
         ...catalog,

@@ -289,5 +289,7 @@
   "PF2E_MARKET_FORGE.Capability.Fatal": "Market Forge detected an incompatible PF2e interface. Writable market transactions were not started; see the console for details.",
   "PF2E_MARKET_FORGE.Availability.pf2e-incompatible": "PF2e does not provide a compatible base template for this spell item and rank",
   "PF2E_MARKET_FORGE.TransactionError.operation-id-conflict": "The checkout operation was retried with the same ID but different contents.",
-  "PF2E_MARKET_FORGE.TransactionError.authority-error": "The request to the authoritative GM failed. Additional details may be shown below and in the GM console."
+  "PF2E_MARKET_FORGE.TransactionError.authority-error": "The request to the authoritative GM failed. Additional details may be shown below and in the GM console.",
+  "PF2E_MARKET_FORGE.TransactionError.authority-session-unavailable": "A secure session with the GM could not be established. Please try the checkout again.",
+  "PF2E_MARKET_FORGE.TransactionError.authority-session-invalid": "The secure GM session expired. Market Forge automatically renews it on retry."
 }

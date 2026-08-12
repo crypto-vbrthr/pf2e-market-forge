@@ -35,11 +35,6 @@ export function createDefaultMarketProfile(overrides = {}) {
     spellItems: {
       scrolls: true,
       wands: true
-    },
-    transaction: {
-      allowMixedPaymentSources: true,
-      revalidateOnCheckout: true,
-      requireCompleteTransaction: true
     }
   };
 

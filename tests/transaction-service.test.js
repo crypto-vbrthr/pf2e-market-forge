@@ -5,6 +5,7 @@ import { TransactionLock } from "../scripts/transactions/transaction-lock.js";
 import { TransactionService } from "../scripts/transactions/transaction-service.js";
 
 const profile = createDefaultMarketProfile();
+const AUTH = { requestedByUserId: "User.player" };
 const request = (quantity = 2) => ({
   direction: "buy",
   profileId: "default",
@@ -36,7 +37,7 @@ describe("Milestone 4 transaction execution", () => {
       now: () => 123456
     });
 
-    const { plan, validation } = await service.dryRun(request());
+    const { plan, validation } = await service.dryRun(request(), AUTH);
     assert.equal(plan.transactionId, "tx-test");
     assert.equal(plan.validatedAt, 123456);
     assert.equal(plan.total, 2500);
@@ -72,7 +73,7 @@ describe("Milestone 4 transaction execution", () => {
       idFactory: () => "tx-buy"
     });
 
-    const result = await service.checkout(request());
+    const result = await service.checkout(request(), AUTH);
     assert.equal(result.status, "completed");
     assert.equal(result.total, 2500);
     assert.equal(result.remainingBalance, 2500);
@@ -119,7 +120,7 @@ describe("Milestone 4 transaction execution", () => {
       lock: new TransactionLock()
     });
 
-    const result = await service.checkout(spellRequest);
+    const result = await service.checkout(spellRequest, AUTH);
     assert.equal(result.status, "completed");
     assert.equal(result.total, 6000);
     assert.equal(balance, 4000);
@@ -157,7 +158,7 @@ describe("Milestone 4 transaction execution", () => {
       lock: new TransactionLock()
     });
 
-    const result = await service.checkout(twoLineRequest);
+    const result = await service.checkout(twoLineRequest, AUTH);
     assert.equal(result.status, "rolled-back");
     assert.equal(balance, 5000);
     assert.deepEqual(rolledBack, ["first"]);
@@ -182,7 +183,7 @@ describe("Milestone 4 transaction execution", () => {
       lock: new TransactionLock()
     });
 
-    const result = await service.checkout(request(1));
+    const result = await service.checkout(request(1), AUTH);
     assert.equal(result.status, "rollback-failed");
     assert.ok(result.warnings.includes("rollback-incomplete"));
     assert.match(result.rollbackErrors[0], /refund failed/);
@@ -199,7 +200,7 @@ describe("Milestone 4 transaction execution", () => {
       permissionProvider: async () => true,
       lock: new TransactionLock()
     });
-    const result = await service.checkout(request(1));
+    const result = await service.checkout(request(1), AUTH);
     assert.equal(result.status, "failed");
     assert.equal(mutation, false);
     assert.ok(result.errors.includes("insufficient-funds"));
@@ -216,7 +217,7 @@ describe("Milestone 4 transaction execution", () => {
       permissionProvider: async () => false,
       lock: new TransactionLock()
     });
-    const result = await service.checkout(request(1));
+    const result = await service.checkout(request(1), AUTH);
     assert.equal(result.status, "failed");
     assert.equal(mutation, false);
     assert.ok(result.errors.includes("permission-denied"));
@@ -238,7 +239,7 @@ describe("Milestone 4 transaction execution", () => {
       receiptService: { async createPurchaseReceipt() { throw new Error("chat unavailable"); } },
       lock: new TransactionLock()
     });
-    const result = await service.checkout(request(1));
+    const result = await service.checkout(request(1), AUTH);
     assert.equal(result.status, "completed");
     assert.equal(rolledBack, false);
     assert.ok(result.warnings.includes("receipt-failed"));
@@ -258,9 +259,9 @@ describe("Milestone 4 transaction execution", () => {
       lock
     });
 
-    const first = service.checkout(request(1));
+    const first = service.checkout(request(1), AUTH);
     await new Promise((resolve) => setTimeout(resolve, 0));
-    const second = await service.checkout(request(1));
+    const second = await service.checkout(request(1), AUTH);
     assert.equal(second.status, "failed");
     assert.ok(second.errors.includes("transaction-locked"));
     release();
@@ -308,7 +309,7 @@ describe("Milestone 5 sale transaction execution", () => {
       idFactory: () => "tx-sale-dry"
     });
 
-    const { plan, validation } = await service.dryRun(saleRequest(2));
+    const { plan, validation } = await service.dryRun(saleRequest(2), AUTH);
     assert.equal(plan.total, 1000);
     assert.equal(plan.lines[0].price.unitPrice, 500);
     assert.equal("quotedUnitPrice" in plan.lines[0].product, false);
@@ -344,7 +345,7 @@ describe("Milestone 5 sale transaction execution", () => {
       idFactory: () => "tx-sale"
     });
 
-    const result = await service.checkout(saleRequest(2));
+    const result = await service.checkout(saleRequest(2), AUTH);
     assert.equal(result.status, "completed");
     assert.equal(result.total, 1000);
     assert.equal(result.remainingBalance, 3000);
@@ -360,7 +361,7 @@ describe("Milestone 5 sale transaction execution", () => {
       productResolver: async (product) => resolvedSale(product, { price: 5000, quantity: 2, treasureCategory: "gem" }),
       balanceProvider: async () => 0
     });
-    const { plan, validation } = await service.dryRun(saleRequest(2));
+    const { plan, validation } = await service.dryRun(saleRequest(2), AUTH);
     assert.equal(validation.valid, true);
     assert.equal(plan.total, 10000);
     assert.equal(plan.lines[0].price.rule, "full-value-treasure");
@@ -376,7 +377,7 @@ describe("Milestone 5 sale transaction execution", () => {
       inventoryAdapter: { async removeOwnedItem() { mutated = true; }, async rollbackMutation() {} },
       lock: new TransactionLock()
     });
-    const result = await service.checkout(saleRequest(2));
+    const result = await service.checkout(saleRequest(2), AUTH);
     assert.equal(result.status, "failed");
     assert.equal(mutated, false);
     assert.ok(result.errors.includes("insufficient-quantity"));
@@ -392,7 +393,7 @@ describe("Milestone 5 sale transaction execution", () => {
       inventoryAdapter: { async removeOwnedItem() { mutated = true; }, async rollbackMutation() {} },
       lock: new TransactionLock()
     });
-    const result = await service.checkout(saleRequest(1));
+    const result = await service.checkout(saleRequest(1), AUTH);
     assert.equal(result.status, "failed");
     assert.equal(mutated, false);
     assert.ok(result.errors.includes("item-no-longer-available"));
@@ -422,7 +423,7 @@ describe("Milestone 5 sale transaction execution", () => {
       lock: new TransactionLock()
     });
 
-    const result = await service.checkout(req);
+    const result = await service.checkout(req, AUTH);
     assert.equal(result.status, "rolled-back");
     assert.equal(balance, 2000);
     assert.deepEqual(rolledBack, ["first"]);
@@ -447,7 +448,7 @@ describe("Milestone 5 sale transaction execution", () => {
       lock: new TransactionLock()
     });
 
-    const result = await service.checkout(saleRequest(1));
+    const result = await service.checkout(saleRequest(1), AUTH);
     assert.equal(result.status, "rolled-back");
     assert.equal(balance, 2000);
     assert.deepEqual(rolledBack, ["sword"]);
@@ -472,7 +473,7 @@ describe("Milestone 5 sale transaction execution", () => {
       lock: new TransactionLock()
     });
 
-    const result = await service.checkout(saleRequest(1));
+    const result = await service.checkout(saleRequest(1), AUTH);
     assert.equal(result.status, "rolled-back");
     assert.equal(balance, 2000);
     assert.equal(itemRestored, true);
@@ -494,7 +495,7 @@ describe("Milestone 5 sale transaction execution", () => {
       receiptService: { async createSaleReceipt() { throw new Error("chat unavailable"); } },
       lock: new TransactionLock()
     });
-    const result = await service.checkout(saleRequest(1));
+    const result = await service.checkout(saleRequest(1), AUTH);
     assert.equal(result.status, "completed");
     assert.equal(rolledBack, false);
     assert.ok(result.warnings.includes("receipt-failed"));

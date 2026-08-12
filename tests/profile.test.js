@@ -7,6 +7,7 @@ describe("MarketProfile contract", () => {
   it("creates a valid schema-v1 default profile", () => {
     const profile = createDefaultMarketProfile();
     assert.deepEqual(validateMarketProfile(profile), { valid: true, errors: [] });
+    assert.equal("transaction" in profile, false, "unused legacy transaction switches are not part of the v0.1 profile contract");
   });
 
   it("deep-merges nested overrides without destroying defaults", () => {
