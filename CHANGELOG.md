@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.0.11 - Milestone 7
+
+- Added persistent named market profiles stored as world configuration.
+- Added a GM-only **Market Profiles & Compendia** configuration submenu.
+- Added per-profile equipment and spell compendium source selection.
+- Added per-profile maximum item-level mode, fixed level, party offset, rounding, rarity access, unavailable-entry display, buy/sell multipliers, full-value treasure rules, and scroll/wand availability.
+- Added a market-profile selector directly to the Market Forge header.
+- Added a GM shortcut from the Market Forge window to the profile manager.
+- Added a configurable default market profile.
+- Migrates the existing M6.x global market-level settings into the initial default profile on first M7 load.
+- Existing M6.x level settings remain registered but hidden for migration compatibility; their controls now live in the profile editor.
+- Switching markets clears both carts to prevent stale prices or availability from crossing profile boundaries.
+- Added persistent profile, compendium discovery, settings-menu, and profile-template regression tests.
+
 ## 0.0.10 - Milestone 6.2
 
 - Added a GM world setting for the maximum number of entries shown in market catalog lists.

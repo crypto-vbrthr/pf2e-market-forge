@@ -1,5 +1,6 @@
 import { LEVEL_LIMIT_MODES, LEVEL_ROUNDING } from "../core/constants.js";
-import { getSetting, SETTINGS } from "../settings/register-settings.js";
+import { getSetting } from "../settings/get-setting.js";
+import { SETTINGS } from "../settings/keys.js";
 import { createDefaultMarketProfile } from "./profile-defaults.js";
 
 export const DEFAULT_LEVEL_SETTING_VALUES = Object.freeze({

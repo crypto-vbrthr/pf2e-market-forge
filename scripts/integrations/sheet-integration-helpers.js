@@ -1,5 +1,6 @@
 import { MODULE_ID } from "../core/constants.js";
-import { getSetting, SETTINGS } from "../settings/register-settings.js";
+import { getSetting } from "../settings/get-setting.js";
+import { SETTINGS } from "../settings/keys.js";
 
 export function injectMarketButton(app, html, expectedActorType) {
   if (!getSetting(SETTINGS.SHOW_INVENTORY_BUTTON, true)) return;

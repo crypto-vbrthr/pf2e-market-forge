@@ -8,7 +8,7 @@ import { SaleInventoryService } from "../inventory/sale-inventory-service.js";
 import { evaluateAvailability } from "../market/availability-service.js";
 import { resolveMarketMaximumForActor } from "../market/market-level-context.js";
 import { createDefaultMarketProfile } from "../market/profile-defaults.js";
-import { applyMarketLevelSettings, readMarketLevelSettings } from "../market/profile-settings.js";
+import { WorldMarketProfileService } from "../market/world-profile-service.js";
 import { CurrencyAdapter } from "../pf2e/currency-adapter.js";
 import { InventoryAdapter } from "../pf2e/inventory-adapter.js";
 import { SpellItemAdapter } from "../pf2e/spell-item-adapter.js";
@@ -48,6 +48,7 @@ export class MarketApplication extends HandlebarsApplicationMixin(ApplicationV2)
   #launchOptions;
   #activeTab;
   #profile;
+  #profileService;
   #catalogService;
   #previewService;
   #spellCatalogService;
@@ -77,6 +78,7 @@ export class MarketApplication extends HandlebarsApplicationMixin(ApplicationV2)
     actor,
     launchOptions = {},
     profile = null,
+    profileService = null,
     catalogService = null,
     previewService = null,
     spellCatalogService = null,
@@ -96,6 +98,7 @@ export class MarketApplication extends HandlebarsApplicationMixin(ApplicationV2)
     this.#launchOptions = structuredClone(launchOptions);
     this.#activeTab = initialTabFromMode(launchOptions.initialMode);
     this.#profile = profile ?? createDefaultMarketProfile();
+    this.#profileService = profileService ?? new WorldMarketProfileService();
     this.#catalogService = catalogService ?? new CatalogService();
     this.#previewService = previewService ?? new ItemPreviewService();
     this.#spellCatalogService = spellCatalogService ?? new SpellCatalogService();
@@ -166,9 +169,8 @@ export class MarketApplication extends HandlebarsApplicationMixin(ApplicationV2)
 
   async _prepareContext(options) {
     const context = await super._prepareContext(options);
-    if (this.#profile?.id === "default") {
-      this.#profile = applyMarketLevelSettings(this.#profile, readMarketLevelSettings());
-    }
+    const persistedProfile = this.#profileService.getProfile(this.#profile?.id);
+    if (persistedProfile) this.#profile = persistedProfile;
     const actor = this.#actor;
     const tabs = buildTabState(this.#activeTab);
     const levelContext = this.#resolveLevelContext();
@@ -216,6 +218,8 @@ export class MarketApplication extends HandlebarsApplicationMixin(ApplicationV2)
     const affordable = activeDirection === "sell" || balance >= quotedTotal;
     const remaining = activeDirection === "sell" ? balance + quotedTotal : Math.max(0, balance - quotedTotal);
     const deficit = activeDirection === "buy" && !affordable ? quotedTotal - balance : 0;
+    const profiles = this.#profileService.getProfiles();
+    const defaultProfileId = this.#profileService.getDefaultProfileId();
 
     return Object.assign(context, {
       actor: actor ? {
@@ -228,9 +232,8 @@ export class MarketApplication extends HandlebarsApplicationMixin(ApplicationV2)
       } : null,
       profile: {
         id: this.#profile.id,
-        name: this.#profile.id === "default"
-          ? game.i18n.localize("PF2E_MARKET_FORGE.DefaultMarket")
-          : this.#profile.name,
+        name: this.#profile.name,
+        isDefault: this.#profile.id === defaultProfileId,
         levelMode: game.i18n.localize(`PF2E_MARKET_FORGE.LevelMode.${this.#profile.availability.levelLimit.mode}`),
         offset: this.#profile.availability.levelLimit.offset,
         maximumItemLevel,
@@ -238,13 +241,20 @@ export class MarketApplication extends HandlebarsApplicationMixin(ApplicationV2)
           ? game.i18n.localize("PF2E_MARKET_FORGE.Unlimited")
           : String(maximumItemLevel)
       },
+      profileOptions: profiles.map((profile) => ({
+        id: profile.id,
+        name: profile.name,
+        selected: profile.id === this.#profile.id,
+        isDefault: profile.id === defaultProfileId
+      })),
+      canManageProfiles: Boolean(game.user?.isGM),
       tabs,
       buyTab: tabs.buy,
       spellItemsTab: tabs["spell-items"],
       sellTab: tabs.sell,
       cartTab: tabs.cart,
       inventoryCount: this.#physicalItemCount(actor),
-      milestone: "6.2",
+      milestone: "7",
       readOnlyMilestone: false,
       catalog: {
         ...catalog,
@@ -304,6 +314,16 @@ export class MarketApplication extends HandlebarsApplicationMixin(ApplicationV2)
 
   async _onRender(context, options) {
     await super._onRender(context, options);
+
+    this.element.querySelector("[data-market-profile]")?.addEventListener("change", async (event) => {
+      await this.#switchProfile(event.currentTarget.value);
+    });
+
+    this.element.querySelector("[data-market-manage-profiles]")?.addEventListener("click", async () => {
+      const { MarketProfilesApplication } = await import("./market-profiles-application.js");
+      const app = new MarketProfilesApplication({ profileService: this.#profileService });
+      await app.render({ force: true });
+    });
 
     for (const button of this.element.querySelectorAll("[data-market-tab]")) {
       button.addEventListener("click", () => {
@@ -1077,6 +1097,32 @@ export class MarketApplication extends HandlebarsApplicationMixin(ApplicationV2)
     const key = `PF2E_MARKET_FORGE.TransactionError.${error}`;
     const localized = game.i18n.localize(key);
     return localized === key ? String(error) : localized;
+  }
+
+  async #switchProfile(profileId) {
+    const profile = this.#profileService.getProfile(profileId);
+    if (!profile || profile.id === this.#profile?.id) return;
+
+    const state = this.#cartService.getState();
+    const hadCart = state.buyLines.length > 0 || state.sellLines.length > 0;
+    if (hadCart) { this.#cartService.clear("buy"); this.#cartService.clear("sell"); }
+
+    this.#profile = profile;
+    this.#catalogFilters = updateCatalogViewState(this.#catalogFilters, "sourcePack", "all");
+    this.#spellView = updateSpellViewState(this.#spellView, "sourcePack", "all");
+    this.#spellView = updateSpellViewState(this.#spellView, "selectedSpellUuid", null);
+    this.#expandedItems.clear();
+    this.#previews.clear();
+    this.#previewErrors.clear();
+    this.#expandedSpells.clear();
+    this.#spellPreviews.clear();
+    this.#spellPreviewErrors.clear();
+    this.#checkoutState = null;
+
+    if (hadCart) {
+      ui.notifications?.info?.(game.i18n.localize("PF2E_MARKET_FORGE.Profiles.CartClearedOnSwitch"));
+    }
+    await this.render();
   }
 
   #transactionWarningLabel(warning) {

@@ -12,7 +12,16 @@
     {{/if}}
     <div class="market-forge-profile-summary">
       <span class="market-forge-kicker">{{localize "PF2E_MARKET_FORGE.MarketProfile"}}</span>
-      <strong>{{profile.name}}</strong>
+      <div class="market-forge-profile-picker">
+        <select data-market-profile aria-label="{{localize "PF2E_MARKET_FORGE.Profiles.Profile"}}">
+          {{#each profileOptions}}
+            <option value="{{id}}" {{#if selected}}selected{{/if}}>{{name}}{{#if isDefault}} ★{{/if}}</option>
+          {{/each}}
+        </select>
+        {{#if canManageProfiles}}
+          <button type="button" data-market-manage-profiles title="{{localize "PF2E_MARKET_FORGE.Profiles.Manage"}}"><i class="fa-solid fa-gear"></i></button>
+        {{/if}}
+      </div>
       <small>{{profile.levelMode}}{{#if profile.offset}} · {{localize "PF2E_MARKET_FORGE.Offset"}} {{profile.offset}}{{/if}}</small>
       <small>{{localize "PF2E_MARKET_FORGE.MaximumItemLevel"}}: {{profile.maximumItemLevelLabel}}</small>
       <small class="market-forge-level-calculation">{{marketLevelContext.calculationLabel}}</small>

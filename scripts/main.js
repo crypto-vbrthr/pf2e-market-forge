@@ -4,9 +4,10 @@ import { registerActorDirectoryIntegration } from "./integrations/actor-director
 import { registerCharacterSheetIntegration } from "./integrations/character-sheet.js";
 import { registerPartySheetIntegration } from "./integrations/party-sheet.js";
 import { registerSettings } from "./settings/register-settings.js";
+import { WorldMarketProfileService } from "./market/world-profile-service.js";
 
 Hooks.once("init", () => {
-  console.log(`${MODULE_ID} | initializing Milestone 6.2`);
+  console.log(`${MODULE_ID} | initializing Milestone 7`);
 
   registerSettings();
   registerCharacterSheetIntegration();
@@ -17,11 +18,19 @@ Hooks.once("init", () => {
   if (module) module.api = new MarketForgeAPI();
 });
 
-Hooks.once("ready", () => {
+Hooks.once("ready", async () => {
   if (game.system.id !== "pf2e") {
     console.error(`${MODULE_ID} | Pathfinder 2e system required`);
     return;
   }
 
-  console.log(`${MODULE_ID} | Milestone 6.2 ready`);
+  if (game.user?.isGM) {
+    try {
+      await new WorldMarketProfileService().persistFallbackIfNeeded();
+    } catch (error) {
+      console.warn(`${MODULE_ID} | Could not persist initial M7 market profile`, error);
+    }
+  }
+
+  console.log(`${MODULE_ID} | Milestone 7 ready`);
 });

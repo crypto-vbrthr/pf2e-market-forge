@@ -1,6 +1,7 @@
 import { MODULE_ID } from "../core/constants.js";
 import { canUseActor } from "./sheet-integration-helpers.js";
-import { getSetting, SETTINGS } from "../settings/register-settings.js";
+import { getSetting } from "../settings/get-setting.js";
+import { SETTINGS } from "../settings/keys.js";
 
 export function registerActorDirectoryIntegration() {
   Hooks.on("getActorContextOptions", (_application, options) => {

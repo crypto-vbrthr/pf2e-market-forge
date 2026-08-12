@@ -1,14 +1,8 @@
+import { MarketProfilesApplication } from "../applications/market-profiles-application.js";
 import { MODULE_ID } from "../core/constants.js";
 
-export const SETTINGS = Object.freeze({
-  SHOW_INVENTORY_BUTTON: "showInventoryButton",
-  SHOW_ACTOR_CONTEXT_MENU: "showActorContextMenu",
-  MARKET_LEVEL_MODE: "marketLevelMode",
-  MARKET_FIXED_LEVEL: "marketFixedLevel",
-  MARKET_LEVEL_OFFSET: "marketLevelOffset",
-  MARKET_LEVEL_ROUNDING: "marketLevelRounding",
-  MARKET_LIST_LIMIT: "marketListLimit"
-});
+export { SETTINGS } from "./keys.js";
+import { SETTINGS } from "./keys.js";
 
 export function registerSettings() {
   game.settings.register(MODULE_ID, SETTINGS.SHOW_INVENTORY_BUTTON, {
@@ -33,7 +27,7 @@ export function registerSettings() {
     name: "PF2E_MARKET_FORGE.Settings.MarketLevelMode.Name",
     hint: "PF2E_MARKET_FORGE.Settings.MarketLevelMode.Hint",
     scope: "world",
-    config: true,
+    config: false,
     type: String,
     choices: {
       "party-average": "PF2E_MARKET_FORGE.LevelMode.party-average",
@@ -49,7 +43,7 @@ export function registerSettings() {
     name: "PF2E_MARKET_FORGE.Settings.MarketFixedLevel.Name",
     hint: "PF2E_MARKET_FORGE.Settings.MarketFixedLevel.Hint",
     scope: "world",
-    config: true,
+    config: false,
     type: Number,
     range: { min: 0, max: 30, step: 1 },
     default: 0
@@ -59,7 +53,7 @@ export function registerSettings() {
     name: "PF2E_MARKET_FORGE.Settings.MarketLevelOffset.Name",
     hint: "PF2E_MARKET_FORGE.Settings.MarketLevelOffset.Hint",
     scope: "world",
-    config: true,
+    config: false,
     type: Number,
     range: { min: -20, max: 20, step: 1 },
     default: 0
@@ -69,7 +63,7 @@ export function registerSettings() {
     name: "PF2E_MARKET_FORGE.Settings.MarketLevelRounding.Name",
     hint: "PF2E_MARKET_FORGE.Settings.MarketLevelRounding.Hint",
     scope: "world",
-    config: true,
+    config: false,
     type: String,
     choices: {
       floor: "PF2E_MARKET_FORGE.Rounding.floor",
@@ -88,12 +82,33 @@ export function registerSettings() {
     range: { min: 25, max: 500, step: 25 },
     default: 150
   });
+
+  game.settings.register(MODULE_ID, SETTINGS.MARKET_PROFILES, {
+    name: "PF2E_MARKET_FORGE.Profiles.StorageName",
+    hint: "PF2E_MARKET_FORGE.Profiles.StorageHint",
+    scope: "world",
+    config: false,
+    type: String,
+    default: ""
+  });
+
+  game.settings.register(MODULE_ID, SETTINGS.DEFAULT_PROFILE_ID, {
+    name: "PF2E_MARKET_FORGE.Profiles.DefaultStorageName",
+    hint: "PF2E_MARKET_FORGE.Profiles.DefaultStorageHint",
+    scope: "world",
+    config: false,
+    type: String,
+    default: "default"
+  });
+
+  game.settings.registerMenu?.(MODULE_ID, "marketProfilesMenu", {
+    name: "PF2E_MARKET_FORGE.Profiles.MenuName",
+    label: "PF2E_MARKET_FORGE.Profiles.MenuLabel",
+    hint: "PF2E_MARKET_FORGE.Profiles.MenuHint",
+    icon: "fa-solid fa-shop",
+    type: MarketProfilesApplication,
+    restricted: true
+  });
 }
 
-export function getSetting(key, fallback = true) {
-  try {
-    return game.settings.get(MODULE_ID, key);
-  } catch (_error) {
-    return fallback;
-  }
-}
+export { getSetting } from "./get-setting.js";

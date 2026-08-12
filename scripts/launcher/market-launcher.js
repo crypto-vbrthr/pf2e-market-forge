@@ -1,6 +1,5 @@
 import { MODULE_ID } from "../core/constants.js";
-import { MarketProfileService } from "../market/profile-service.js";
-import { createConfiguredMarketProfile } from "../market/profile-settings.js";
+import { WorldMarketProfileService } from "../market/world-profile-service.js";
 import { MarketPermissionService } from "../permissions/permission-service.js";
 
 export class MarketLauncher {
@@ -9,7 +8,7 @@ export class MarketLauncher {
   #permissionService;
 
   constructor({ profileService, permissionService } = {}) {
-    this.#profileService = profileService ?? new MarketProfileService();
+    this.#profileService = profileService ?? new WorldMarketProfileService();
     this.#permissionService = permissionService ?? new MarketPermissionService();
   }
 
@@ -40,17 +39,15 @@ export class MarketLauncher {
       return false;
     }
 
-    const requestedProfileId = options.profileId ?? "default";
-    const profile = requestedProfileId === "default"
-      ? createConfiguredMarketProfile()
-      : this.#profileService.getProfile(requestedProfileId) ?? createConfiguredMarketProfile();
+    const requestedProfileId = options.profileId ?? this.#profileService.getDefaultProfileId();
+    const profile = this.#profileService.getProfile(requestedProfileId) ?? this.#profileService.getDefaultProfile();
     const { MarketApplication } = await import("../applications/market-application.js");
 
     if (this.#application?.rendered) await this.#application.close();
-    this.#application = new MarketApplication({ actor, launchOptions: options, profile });
+    this.#application = new MarketApplication({ actor, launchOptions: options, profile, profileService: this.#profileService });
     await this.#application.render({ force: true });
 
-    console.debug(`${MODULE_ID} | Market Forge opened`, { actor: actor.uuid, options });
+    console.debug(`${MODULE_ID} | Market Forge opened`, { actor: actor.uuid, profile: profile?.id, options });
     return true;
   }
 

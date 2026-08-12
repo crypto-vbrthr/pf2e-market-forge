@@ -1,4 +1,5 @@
-import { getSetting, SETTINGS } from "./register-settings.js";
+import { getSetting } from "./get-setting.js";
+import { SETTINGS } from "./keys.js";
 
 export const DEFAULT_MARKET_LIST_LIMIT = 150;
 export const MIN_MARKET_LIST_LIMIT = 25;

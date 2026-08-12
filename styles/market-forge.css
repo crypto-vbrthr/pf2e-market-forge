@@ -852,3 +852,239 @@
     max-height: none;
   }
 }
+
+/* Milestone 7 market profiles */
+.market-forge-profile-picker {
+  align-items: center;
+  display: flex;
+  gap: 0.35rem;
+  justify-content: flex-end;
+}
+
+.market-forge-profile-picker select {
+  min-width: 180px;
+  max-width: 260px;
+}
+
+.market-forge-profile-picker button {
+  align-items: center;
+  display: inline-flex;
+  height: 30px;
+  justify-content: center;
+  min-width: 32px;
+  padding: 0;
+}
+
+.market-forge-profiles-window .window-content {
+  padding: 0;
+}
+
+.market-forge-profiles-shell {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 560px;
+}
+
+.market-forge-profiles-header,
+.market-forge-profile-footer {
+  align-items: center;
+  display: flex;
+  gap: 1rem;
+  justify-content: space-between;
+  padding: 0.8rem 1rem;
+}
+
+.market-forge-profiles-header {
+  border-bottom: 1px solid var(--color-border-light-primary, #777);
+}
+
+.market-forge-profiles-header h2 {
+  margin: 0;
+}
+
+.market-forge-profiles-header p {
+  margin: 0.25rem 0 0;
+  opacity: 0.75;
+}
+
+.market-forge-profiles-layout {
+  display: grid;
+  flex: 1 1 auto;
+  grid-template-columns: 230px minmax(0, 1fr);
+  min-height: 0;
+}
+
+.market-forge-profile-list-panel {
+  border-right: 1px solid var(--color-border-light-primary, #777);
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+  padding: 0.8rem;
+}
+
+.market-forge-profile-list-panel label,
+.market-forge-profile-fields label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
+.market-forge-profile-id {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.market-forge-profile-id span {
+  font-size: 0.72rem;
+  opacity: 0.65;
+  text-transform: uppercase;
+}
+
+.market-forge-profile-id code {
+  overflow-wrap: anywhere;
+}
+
+.market-forge-info {
+  align-items: center;
+  border: 1px solid var(--color-border-light-primary, #777);
+  border-radius: 5px;
+  display: flex;
+  gap: 0.4rem;
+  padding: 0.45rem 0.55rem;
+}
+
+.market-forge-profile-editor {
+  display: flex;
+  flex-direction: column;
+  gap: 0.7rem;
+  min-height: 0;
+  overflow: auto;
+  padding: 0.8rem;
+}
+
+.market-forge-profile-section {
+  border: 1px solid var(--color-border-light-primary, #777);
+  border-radius: 6px;
+  padding: 0.75rem;
+}
+
+.market-forge-profile-section h3 {
+  margin: 0 0 0.65rem;
+}
+
+.market-forge-profile-section .notes,
+.market-forge-profile-list-panel .notes {
+  font-size: 0.8rem;
+  margin: 0.25rem 0 0.6rem;
+  opacity: 0.72;
+}
+
+.market-forge-profile-fields {
+  display: grid;
+  gap: 0.65rem;
+}
+
+.market-forge-profile-fields.two-columns {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.market-forge-profile-fields .wide {
+  grid-column: 1 / -1;
+}
+
+.market-forge-checkbox-grid {
+  display: grid;
+  gap: 0.5rem;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.market-forge-checkbox-grid label,
+.market-forge-compendium-grid label {
+  align-items: center;
+  display: flex;
+  gap: 0.45rem;
+}
+
+.market-forge-compendium-grid {
+  border: 1px solid var(--color-border-light-primary, #777);
+  border-radius: 5px;
+  display: grid;
+  gap: 0.3rem;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  max-height: 235px;
+  overflow: auto;
+  padding: 0.45rem;
+}
+
+.market-forge-compendium-grid label {
+  border-radius: 4px;
+  padding: 0.35rem 0.4rem;
+}
+
+.market-forge-compendium-grid label:hover {
+  background: color-mix(in srgb, currentColor 7%, transparent);
+}
+
+.market-forge-compendium-grid label > span {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.market-forge-compendium-grid small {
+  opacity: 0.62;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.market-forge-profile-footer {
+  border-top: 1px solid var(--color-border-light-primary, #777);
+}
+
+.market-forge-profile-editor-actions {
+  align-items: center;
+  display: flex;
+  gap: 0.45rem;
+}
+
+.market-forge-profile-editor-actions button,
+.market-forge-profile-list-panel button {
+  align-items: center;
+  display: inline-flex;
+  gap: 0.4rem;
+  justify-content: center;
+}
+
+.market-forge-unsaved {
+  align-items: center;
+  display: inline-flex;
+  gap: 0.35rem;
+}
+
+.market-forge-unsaved i {
+  font-size: 0.55rem;
+}
+
+.market-forge-warning-inline {
+  margin-left: 0.6rem;
+}
+
+@media (max-width: 800px) {
+  .market-forge-profiles-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .market-forge-profile-list-panel {
+    border-bottom: 1px solid var(--color-border-light-primary, #777);
+    border-right: 0;
+  }
+
+  .market-forge-profile-fields.two-columns,
+  .market-forge-checkbox-grid,
+  .market-forge-compendium-grid {
+    grid-template-columns: 1fr;
+  }
+}
