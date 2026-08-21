@@ -4,6 +4,7 @@ import { createDefaultMarketProfile } from "../market/profile-defaults.js";
 import { validateMarketProfile } from "../market/profile-validator.js";
 import { WorldMarketProfileService } from "../market/world-profile-service.js";
 import { getMarketSocket } from "../socket/market-socket.js";
+import { CityForgeProvider, normalizeAvailabilityProvider } from "../integrations/city-forge-provider.js";
 
 const api = globalThis.foundry?.applications?.api ?? {};
 const BaseApplicationV2 = api.ApplicationV2 ?? class {};
@@ -29,10 +30,12 @@ export class MarketProfilesApplication extends withHandlebars(BaseApplicationV2)
   #selectedId = null;
   #draft = null;
   #dirty = false;
+  #cityForgeProvider;
 
-  constructor({ profileService = null } = {}) {
+  constructor({ profileService = null, cityForgeProvider = null } = {}) {
     super();
     this.#service = profileService ?? new WorldMarketProfileService();
+    this.#cityForgeProvider = cityForgeProvider ?? new CityForgeProvider();
   }
 
   async _prepareContext(options) {
@@ -49,8 +52,14 @@ export class MarketProfilesApplication extends withHandlebars(BaseApplicationV2)
     const persisted = profiles.find((profile) => profile.id === this.#selectedId) ?? profiles[0] ?? createDefaultMarketProfile();
     if (!this.#draft) this.#draft = structuredClone(persisted);
     const draft = this.#draft;
+    draft.availability ??= {};
+    draft.availability.provider ??= { type: "manual", sourceId: "" };
+
     const displayProfiles = profiles.some((profile) => profile.id === draft.id) ? profiles : [...profiles, draft];
     const packs = discoverItemCompendia();
+    const cityForgeStatus = this.#cityForgeProvider.getStatus();
+    const cityForgeSources = cityForgeStatus.available ? await this.#cityForgeProvider.listSources() : [];
+    const providerConfig = normalizeAvailabilityProvider(draft);
     const validation = validateMarketProfile(draft);
 
     return Object.assign(context, {
@@ -64,8 +73,32 @@ export class MarketProfilesApplication extends withHandlebars(BaseApplicationV2)
         ...structuredClone(draft),
         isDefault: draft.id === defaultId,
         fixedMode: draft.availability?.levelLimit?.mode === "fixed",
+        cityForgeMode: providerConfig.type === "city-forge",
         buyPercent: Math.round(Number(draft.pricing?.buyMultiplier ?? 1) * 100),
         sellPercent: Math.round(Number(draft.pricing?.sellMultiplier ?? 0.5) * 100)
+      },
+      availabilityProviderOptions: [
+        {
+          value: "manual",
+          label: localize("PF2E_MARKET_FORGE.CityForge.ProviderManual", "Manual profile"),
+          selected: providerConfig.type === "manual"
+        },
+        {
+          value: "city-forge",
+          label: localize("PF2E_MARKET_FORGE.CityForge.ProviderLive", "City Forge (live)"),
+          selected: providerConfig.type === "city-forge"
+        }
+      ],
+      cityForge: {
+        available: cityForgeStatus.available,
+        active: cityForgeStatus.active,
+        sourceMissing: providerConfig.type === "city-forge"
+          && !cityForgeSources.some((source) => source.id === providerConfig.sourceId),
+        sources: cityForgeSources.map((source) => ({
+          id: source.id,
+          label: source.label,
+          selected: source.id === providerConfig.sourceId
+        }))
       },
       itemCompendia: prepareCompendiumChoices(packs, draft.sources?.itemCompendia),
       spellCompendia: prepareCompendiumChoices(packs, draft.sources?.spellCompendia),
@@ -138,7 +171,9 @@ export class MarketProfilesApplication extends withHandlebars(BaseApplicationV2)
     if (!this.#draft) return;
     setPath(this.#draft, path, normalizeFieldValue(path, value));
     this.#dirty = true;
-    if (path === "availability.levelLimit.mode") this.render();
+    if (["availability.levelLimit.mode", "availability.provider.type", "availability.provider.sourceId"].includes(path)) {
+      this.render();
+    }
   }
 
   #toggleSource(kind, packId, checked) {
@@ -242,6 +277,12 @@ export class MarketProfilesApplication extends withHandlebars(BaseApplicationV2)
 export function normalizeEditableProfile(profile) {
   const result = structuredClone(profile);
   result.name = String(result.name ?? "").trim();
+  result.availability ??= {};
+  const provider = normalizeAvailabilityProvider(result);
+  result.availability.provider = {
+    type: provider.type,
+    sourceId: provider.type === "city-forge" ? provider.sourceId : ""
+  };
   result.availability.levelLimit.fixedLevel = clampInteger(result.availability.levelLimit.fixedLevel, 0, 30, 0);
   result.availability.levelLimit.offset = clampInteger(result.availability.levelLimit.offset, -20, 20, 0);
   result.pricing.buyMultiplier = Math.max(0, Number(result.pricing.buyMultiplier) || 0);

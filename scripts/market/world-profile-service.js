@@ -146,6 +146,8 @@ export function normalizeProfiles(profiles, { tolerateInvalid = false } = {}) {
 
 function canonicalizeMarketProfile(profile) {
   const canonical = structuredClone(profile);
+  canonical.availability ??= {};
+  canonical.availability.provider = normalizeAvailabilityProviderConfig(canonical.availability.provider);
   // M0-M7 carried transaction switches which were never implemented as real
   // profile behavior. Revalidation and complete transactions are hard
   // invariants; mixed payment sources remain intentionally inactive.
@@ -170,6 +172,16 @@ export function createProfileId(name, existingIds = []) {
 function assertValidProfile(profile) {
   const validation = validateMarketProfile(profile);
   if (!validation.valid) throw new Error(`Invalid MarketProfile: ${validation.errors.join(", ")}`);
+}
+
+function normalizeAvailabilityProviderConfig(value) {
+  if (value?.type === "city-forge") {
+    return {
+      type: "city-forge",
+      sourceId: typeof value.sourceId === "string" ? value.sourceId : ""
+    };
+  }
+  return { type: "manual", sourceId: "" };
 }
 
 async function defaultSetter(key, value) {

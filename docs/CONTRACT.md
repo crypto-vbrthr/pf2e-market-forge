@@ -156,3 +156,47 @@ The module exposes a deliberately small API as `game.modules.get("pf2e-market-fo
 Transaction execution, transaction plans, adapters, and quote engines are not public API in v0.1.
 
 `diagnose()` returns JSON-safe primitive data about module/system versions, profiles, PF2e capability checks, optional actor write capability, and current transport/authority status. It does not return live Foundry Documents.
+
+
+## City Forge provider contract (0.2.0)
+
+City Forge is an optional availability provider. Market Forge never persists a copy of the settlement economy context.
+
+A profile can store:
+
+```js
+availability: {
+  provider: {
+    type: "manual" | "city-forge",
+    sourceId: "settlement-id::market-id"
+  }
+}
+```
+
+When `type === "city-forge"`:
+
+- manual `levelLimit` and `rarities` are not used for buy availability;
+- `sources.itemCompendia` and `sources.spellCompendia` remain mandatory Market Forge gates;
+- `unavailableDisplay` remains a Market Forge presentation rule;
+- `pricing.buyMultiplier` is multiplied by the City Forge evaluation's `priceMultiplier`;
+- sell availability and sell pricing remain Market Forge-owned.
+
+The provider must fail closed if it cannot obtain the configured City Forge context.
+
+### Catalog / checkout parity
+
+The same provider result semantics must be used in:
+
+- physical catalog search
+- direct product lookup before adding to cart
+- spell catalog / spell-item generation
+- local dry-run validation
+- authoritative GM checkout re-resolution
+
+A provider integration that only filters the visible catalog violates this contract.
+
+### Authority boundary
+
+The client checkout request carries the MarketProfile id and product identity only.
+
+The authority GM reloads the MarketProfile and current City Forge context. It must not accept a client-provided `SettlementEconomyContext`, provider evaluation, availability result, or price multiplier as authoritative input.

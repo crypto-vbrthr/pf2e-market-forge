@@ -11,6 +11,7 @@ import { normalizeCheckoutRequest } from "./checkout-contract.js";
 import { globalTransactionCoordinator } from "./transaction-coordinator.js";
 
 import { TransactionService } from "./transaction-service.js";
+import { CityForgeProvider, isCityForgeAvailability } from "../integrations/city-forge-provider.js";
 
 export class AuthoritativeMarketService {
   #profileService;
@@ -25,6 +26,7 @@ export class AuthoritativeMarketService {
   #productResolver;
   #operations = new Map();
   #operationTtlMs;
+  #cityForgeProvider;
 
   constructor({
     profileService = new WorldMarketProfileService(),
@@ -44,6 +46,7 @@ export class AuthoritativeMarketService {
     priceService = new PriceService(),
     transactionService = null,
     productResolver = null,
+    cityForgeProvider = new CityForgeProvider(),
     operationTtlMs = 120000
   } = {}) {
     this.#profileService = profileService;
@@ -55,6 +58,7 @@ export class AuthoritativeMarketService {
     this.#actorProvider = actorProvider;
     this.#userProvider = userProvider;
     this.#operationTtlMs = Math.max(1000, Number(operationTtlMs) || 120000);
+    this.#cityForgeProvider = cityForgeProvider;
     this.#productResolver = productResolver ?? new MarketProductResolver({
       catalogService: catalogService ?? undefined,
       spellCatalogService: spellCatalogService ?? undefined,
@@ -122,12 +126,16 @@ export class AuthoritativeMarketService {
         }
       }
 
-      const maximumItemLevel = resolveMarketMaximumForActor(profile, itemActor, {
-        activeParty: globalThis.game?.actors?.party ?? null
-      }).result?.maximumItemLevel ?? null;
+      const cityForgeSession = await this.#cityForgeProvider.createSession(profile);
+      const maximumItemLevel = isCityForgeAvailability(profile)
+        ? null
+        : resolveMarketMaximumForActor(profile, itemActor, {
+            activeParty: globalThis.game?.actors?.party ?? null
+          }).result?.maximumItemLevel ?? null;
 
       return this.#transactionService.checkout(normalized, {
         maximumItemLevel,
+        availabilitySession: cityForgeSession,
         requestedByUserId: normalized.requestedByUserId
       });
     });

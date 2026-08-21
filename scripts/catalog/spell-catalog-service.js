@@ -27,7 +27,7 @@ export class SpellCatalogService {
     else this.#indexCache.clear();
   }
 
-  async getEntry(uuid, { profile, fresh = false } = {}) {
+  async getEntry(uuid, { profile, fresh = false, availabilitySession = null } = {}) {
     if (typeof uuid !== "string" || !uuid) throw new TypeError("Spell catalog entry UUID is required.");
     if (!profile || typeof profile !== "object") throw new TypeError("Spell catalog lookup requires a MarketProfile.");
 
@@ -36,12 +36,15 @@ export class SpellCatalogService {
       const result = fresh ? await this.#loadPackUncached(packId) : await this.#loadPack(packId);
       const entry = result.entries.find((candidate) => candidate.uuid === uuid);
       if (!entry) continue;
+      const providerAvailability = availabilitySession?.type === "city-forge"
+        ? availabilitySession.evaluateEntry(entry, { sourceKind: "spell", level: null })
+        : null;
       return {
         ...entry,
         availability: evaluateAvailability(
           { ...entry, level: 0 },
           profile,
-          { maximumItemLevel: null, sourceKind: "spell" }
+          { maximumItemLevel: null, sourceKind: "spell", providerAvailability }
         )
       };
     }
@@ -53,7 +56,7 @@ export class SpellCatalogService {
     return spell?.type === "spell" ? spell : null;
   }
 
-  async search({ profile, filters = {}, limit = 150 } = {}) {
+  async search({ profile, filters = {}, limit = 150, availabilitySession = null } = {}) {
     if (!profile || typeof profile !== "object") throw new TypeError("Spell catalog search requires a MarketProfile.");
     if (!Number.isSafeInteger(limit) || limit < 1) throw new TypeError("Spell catalog result limit must be a positive integer.");
 
@@ -63,14 +66,19 @@ export class SpellCatalogService {
     const normalized = normalizeSpellFilters(filters);
 
     let filtered = allEntries
-      .map((entry) => ({
-        ...entry,
-        availability: evaluateAvailability(
-          { ...entry, level: 0 },
-          profile,
-          { maximumItemLevel: null, sourceKind: "spell" }
-        )
-      }))
+      .map((entry) => {
+        const providerAvailability = availabilitySession?.type === "city-forge"
+          ? availabilitySession.evaluateEntry(entry, { sourceKind: "spell", level: null })
+          : null;
+        return {
+          ...entry,
+          availability: evaluateAvailability(
+            { ...entry, level: 0 },
+            profile,
+            { maximumItemLevel: null, sourceKind: "spell", providerAvailability }
+          )
+        };
+      })
       .filter((entry) => profile.availability?.unavailableDisplay !== "hidden" || entry.availability.available)
       .filter((entry) => matchesSpellFilters(entry, normalized))
       .sort(compareSpellEntries);

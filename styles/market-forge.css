@@ -1088,3 +1088,15 @@
     grid-template-columns: 1fr;
   }
 }
+
+/* 0.2.0 City Forge provider */
+.market-forge-city-forge-section h3 i,
+.market-forge-city-source i {
+  margin-right: 0.35rem;
+}
+.market-forge-city-source {
+  opacity: 0.9;
+}
+.market-forge-city-source.disconnected {
+  color: var(--color-level-error, #c43b3b);
+}

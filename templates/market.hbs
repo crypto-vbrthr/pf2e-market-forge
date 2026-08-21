@@ -24,6 +24,11 @@
       </div>
       <small>{{profile.levelMode}}{{#if profile.offset}} · {{localize "PF2E_MARKET_FORGE.Offset"}} {{profile.offset}}{{/if}}</small>
       <small>{{localize "PF2E_MARKET_FORGE.MaximumItemLevel"}}: {{profile.maximumItemLevelLabel}}</small>
+      {{#if profile.providerLabel}}
+        <small class="market-forge-city-source {{#unless profile.providerConnected}}disconnected{{/unless}}">
+          <i class="fa-solid fa-city"></i> {{profile.providerLabel}}
+        </small>
+      {{/if}}
       <small class="market-forge-level-calculation">{{marketLevelContext.calculationLabel}}</small>
     </div>
   </header>

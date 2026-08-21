@@ -18,6 +18,14 @@ export function validateMarketProfile(profile) {
   if (!isStringArray(itemCompendia)) errors.push("invalid-item-compendia");
   if (!isStringArray(spellCompendia)) errors.push("invalid-spell-compendia");
 
+  const provider = profile.availability?.provider;
+  if (provider !== undefined) {
+    if (!["manual", "city-forge"].includes(provider?.type)) errors.push("invalid-availability-provider");
+    if (provider?.type === "city-forge" && (typeof provider.sourceId !== "string" || !provider.sourceId.trim())) {
+      errors.push("invalid-city-forge-source");
+    }
+  }
+
   const limit = profile.availability?.levelLimit;
   if (!LEVEL_LIMIT_MODES.includes(limit?.mode)) errors.push("invalid-level-mode");
   if (!LEVEL_ROUNDING.includes(limit?.rounding)) errors.push("invalid-level-rounding");

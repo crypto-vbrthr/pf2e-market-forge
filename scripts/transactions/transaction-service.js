@@ -46,7 +46,7 @@ export class TransactionService {
     this.#now = now;
   }
 
-  async prepare(request, { maximumItemLevel = null, authoritative = false, requestedByUserId = null } = {}) {
+  async prepare(request, { maximumItemLevel = null, authoritative = false, requestedByUserId = null, availabilitySession = null } = {}) {
     const normalized = normalizeCheckoutRequest(request, { requestedByUserId });
     const profile = await this.#profileProvider(normalized.profileId);
     if (!profile) throw new RangeError(`Market profile not found: ${normalized.profileId}`);
@@ -61,7 +61,8 @@ export class TransactionService {
         authoritative,
         direction: normalized.direction,
         itemActorUuid: normalized.itemActorUuid,
-        currencyActorUuid: normalized.currencyActorUuid
+        currencyActorUuid: normalized.currencyActorUuid,
+        availabilitySession
       });
       const identity = requestedLine.product.inventoryItemUuid ?? requestedLine.product.sourceUuid ?? "unknown";
       if (!resolved) throw new RangeError(`Market product not found: ${identity}`);

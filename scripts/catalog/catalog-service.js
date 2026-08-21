@@ -39,7 +39,7 @@ export class CatalogService {
     else this.#indexCache.clear();
   }
 
-  async getEntry(uuid, { profile, maximumItemLevel = null, fresh = false } = {}) {
+  async getEntry(uuid, { profile, maximumItemLevel = null, fresh = false, availabilitySession = null } = {}) {
     if (typeof uuid !== "string" || !uuid) throw new TypeError("Catalog entry UUID is required.");
     if (!profile || typeof profile !== "object") throw new TypeError("Catalog lookup requires a MarketProfile.");
 
@@ -51,16 +51,23 @@ export class CatalogService {
       const result = fresh ? await this.#loadPackUncached(packId) : await this.#loadPack(packId);
       const entry = result.entries.find((candidate) => candidate.uuid === uuid);
       if (!entry) continue;
+      const providerAvailability = availabilitySession?.type === "city-forge"
+        ? availabilitySession.evaluateEntry(entry, { sourceKind: "item" })
+        : null;
       return {
         ...entry,
-        availability: evaluateAvailability(entry, profile, { maximumItemLevel, sourceKind: "item" })
+        availability: evaluateAvailability(entry, profile, {
+          maximumItemLevel,
+          sourceKind: "item",
+          providerAvailability
+        })
       };
     }
 
     return null;
   }
 
-  async search({ profile, maximumItemLevel = null, filters = {}, limit = 150 } = {}) {
+  async search({ profile, maximumItemLevel = null, filters = {}, limit = 150, availabilitySession = null } = {}) {
     if (!profile || typeof profile !== "object") throw new TypeError("Catalog search requires a MarketProfile.");
     if (!Number.isSafeInteger(limit) || limit < 1) throw new TypeError("Catalog result limit must be a positive integer.");
 
@@ -73,10 +80,19 @@ export class CatalogService {
     const normalizedFilters = normalizeCatalogFilters(filters);
 
     let filtered = allEntries
-      .map((entry) => ({
-        ...entry,
-        availability: evaluateAvailability(entry, profile, { maximumItemLevel, sourceKind: "item" })
-      }))
+      .map((entry) => {
+        const providerAvailability = availabilitySession?.type === "city-forge"
+          ? availabilitySession.evaluateEntry(entry, { sourceKind: "item" })
+          : null;
+        return {
+          ...entry,
+          availability: evaluateAvailability(entry, profile, {
+            maximumItemLevel,
+            sourceKind: "item",
+            providerAvailability
+          })
+        };
+      })
       .filter((entry) => profile.availability?.unavailableDisplay !== "hidden" || entry.availability.available)
       .filter((entry) => matchesFilters(entry, normalizedFilters));
 

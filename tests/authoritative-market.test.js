@@ -144,4 +144,51 @@ describe("GM-authoritative market service", () => {
     assert.deepEqual(order, ["User.a-start-1", "User.a-sold", "User.b-start-0", "User.b-rejected"]);
   });
 
+
+  it("refreshes the live City Forge provider on the authoritative GM before checkout", async () => {
+    const profile = createDefaultMarketProfile({
+      availability: {
+        provider: { type: "city-forge", sourceId: "settlement-1::default" }
+      }
+    });
+    const actor = { uuid: "Actor.hero", type: "character", level: 20 };
+    const session = { type: "city-forge", connected: true, sourceId: "settlement-1::default" };
+    const calls = [];
+
+    const service = new AuthoritativeMarketService({
+      profileService: { getProfile: () => profile },
+      actorProvider: async () => actor,
+      userProvider: (id) => ({ id, active: true }),
+      capabilityService: { assertWritableActor: () => ({ compatible: true, errors: [], missing: [] }) },
+      coordinator: new TransactionCoordinator(),
+      cityForgeProvider: {
+        async createSession(receivedProfile) {
+          calls.push({ type: "provider", profile: receivedProfile });
+          return session;
+        }
+      },
+      transactionService: {
+        async checkout(request, options) {
+          calls.push({ type: "checkout", request, options });
+          return { status: "completed", direction: request.direction, total: 100, lines: [], errors: [], warnings: [] };
+        }
+      }
+    });
+
+    const result = await service.checkout({
+      direction: "buy",
+      profileId: "default",
+      itemActorUuid: "Actor.hero",
+      currencyActorUuid: "Actor.hero",
+      lines: [{ quantity: 1, product: { kind: "item", sourceUuid: "Compendium.market.Item.one" } }]
+    }, { requesterUserId: "User.actual" });
+
+    assert.equal(result.status, "completed");
+    assert.equal(calls[0].type, "provider");
+    assert.equal(calls[1].type, "checkout");
+    assert.equal(calls[1].options.maximumItemLevel, null);
+    assert.equal(calls[1].options.availabilitySession, session);
+  });
+
+
 });

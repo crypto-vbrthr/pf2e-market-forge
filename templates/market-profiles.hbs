@@ -31,19 +31,58 @@
     </aside>
 
     <main class="market-forge-profile-editor">
+      <section class="market-forge-profile-section market-forge-city-forge-section">
+        <h3><i class="fa-solid fa-city"></i> {{localize "PF2E_MARKET_FORGE.CityForge.SectionTitle"}}</h3>
+        <p class="notes">{{localize "PF2E_MARKET_FORGE.CityForge.SectionHint"}}</p>
+        <div class="market-forge-profile-fields two-columns">
+          <label>
+            <span>{{localize "PF2E_MARKET_FORGE.CityForge.Provider"}}</span>
+            <select data-profile-field="availability.provider.type">
+              {{#each availabilityProviderOptions}}
+                <option value="{{value}}" {{#if selected}}selected{{/if}}>{{label}}</option>
+              {{/each}}
+            </select>
+          </label>
+
+          {{#if draft.cityForgeMode}}
+            <label>
+              <span>{{localize "PF2E_MARKET_FORGE.CityForge.Source"}}</span>
+              <select data-profile-field="availability.provider.sourceId" {{#unless cityForge.available}}disabled{{/unless}}>
+                <option value="">{{localize "PF2E_MARKET_FORGE.CityForge.SelectSource"}}</option>
+                {{#each cityForge.sources}}
+                  <option value="{{id}}" {{#if selected}}selected{{/if}}>{{label}}</option>
+                {{/each}}
+              </select>
+            </label>
+          {{/if}}
+        </div>
+
+        {{#if draft.cityForgeMode}}
+          {{#if cityForge.available}}
+            {{#if cityForge.sourceMissing}}
+              <div class="market-forge-warning"><i class="fa-solid fa-triangle-exclamation"></i> {{localize "PF2E_MARKET_FORGE.CityForge.SourceMissing"}}</div>
+            {{else}}
+              <div class="market-forge-info"><i class="fa-solid fa-link"></i> {{localize "PF2E_MARKET_FORGE.CityForge.LiveHint"}}</div>
+            {{/if}}
+          {{else}}
+            <div class="market-forge-warning"><i class="fa-solid fa-triangle-exclamation"></i> {{localize "PF2E_MARKET_FORGE.CityForge.UnavailableHint"}}</div>
+          {{/if}}
+        {{/if}}
+      </section>
+
       <section class="market-forge-profile-section">
         <h3>{{localize "PF2E_MARKET_FORGE.Profiles.General"}}</h3>
         <div class="market-forge-profile-fields two-columns">
           <label class="wide"><span>{{localize "PF2E_MARKET_FORGE.Profiles.Name"}}</span><input type="text" value="{{draft.name}}" data-profile-field="name" /></label>
           <label><span>{{localize "PF2E_MARKET_FORGE.Profiles.LevelMode"}}</span>
-            <select data-profile-field="availability.levelLimit.mode">
+            <select data-profile-field="availability.levelLimit.mode" {{#if draft.cityForgeMode}}disabled{{/if}}>
               {{#each levelModeOptions}}<option value="{{value}}" {{#if selected}}selected{{/if}}>{{label}}</option>{{/each}}
             </select>
           </label>
-          <label><span>{{localize "PF2E_MARKET_FORGE.Profiles.FixedLevel"}}</span><input type="number" min="0" max="30" step="1" value="{{draft.availability.levelLimit.fixedLevel}}" data-profile-field="availability.levelLimit.fixedLevel" {{#unless draft.fixedMode}}disabled{{/unless}} /></label>
-          <label><span>{{localize "PF2E_MARKET_FORGE.Profiles.LevelOffset"}}</span><input type="number" min="-20" max="20" step="1" value="{{draft.availability.levelLimit.offset}}" data-profile-field="availability.levelLimit.offset" /></label>
+          <label><span>{{localize "PF2E_MARKET_FORGE.Profiles.FixedLevel"}}</span><input type="number" min="0" max="30" step="1" value="{{draft.availability.levelLimit.fixedLevel}}" data-profile-field="availability.levelLimit.fixedLevel" {{#if draft.cityForgeMode}}disabled{{else}}{{#unless draft.fixedMode}}disabled{{/unless}}{{/if}} /></label>
+          <label><span>{{localize "PF2E_MARKET_FORGE.Profiles.LevelOffset"}}</span><input type="number" min="-20" max="20" step="1" value="{{draft.availability.levelLimit.offset}}" data-profile-field="availability.levelLimit.offset" {{#if draft.cityForgeMode}}disabled{{/if}} /></label>
           <label><span>{{localize "PF2E_MARKET_FORGE.Profiles.Rounding"}}</span>
-            <select data-profile-field="availability.levelLimit.rounding">
+            <select data-profile-field="availability.levelLimit.rounding" {{#if draft.cityForgeMode}}disabled{{/if}}>
               {{#each roundingOptions}}<option value="{{value}}" {{#if selected}}selected{{/if}}>{{label}}</option>{{/each}}
             </select>
           </label>
@@ -58,10 +97,10 @@
       <section class="market-forge-profile-section">
         <h3>{{localize "PF2E_MARKET_FORGE.Profiles.Rarities"}}</h3>
         <div class="market-forge-checkbox-grid">
-          <label><input type="checkbox" data-profile-field="availability.rarities.common" {{#if draft.availability.rarities.common}}checked{{/if}} />{{localize "PF2E_MARKET_FORGE.Rarity.common"}}</label>
-          <label><input type="checkbox" data-profile-field="availability.rarities.uncommon" {{#if draft.availability.rarities.uncommon}}checked{{/if}} />{{localize "PF2E_MARKET_FORGE.Rarity.uncommon"}}</label>
-          <label><input type="checkbox" data-profile-field="availability.rarities.rare" {{#if draft.availability.rarities.rare}}checked{{/if}} />{{localize "PF2E_MARKET_FORGE.Rarity.rare"}}</label>
-          <label><input type="checkbox" data-profile-field="availability.rarities.unique" {{#if draft.availability.rarities.unique}}checked{{/if}} />{{localize "PF2E_MARKET_FORGE.Rarity.unique"}}</label>
+          <label><input type="checkbox" data-profile-field="availability.rarities.common" {{#if draft.cityForgeMode}}disabled{{/if}} {{#if draft.availability.rarities.common}}checked{{/if}} />{{localize "PF2E_MARKET_FORGE.Rarity.common"}}</label>
+          <label><input type="checkbox" data-profile-field="availability.rarities.uncommon" {{#if draft.cityForgeMode}}disabled{{/if}} {{#if draft.availability.rarities.uncommon}}checked{{/if}} />{{localize "PF2E_MARKET_FORGE.Rarity.uncommon"}}</label>
+          <label><input type="checkbox" data-profile-field="availability.rarities.rare" {{#if draft.cityForgeMode}}disabled{{/if}} {{#if draft.availability.rarities.rare}}checked{{/if}} />{{localize "PF2E_MARKET_FORGE.Rarity.rare"}}</label>
+          <label><input type="checkbox" data-profile-field="availability.rarities.unique" {{#if draft.cityForgeMode}}disabled{{/if}} {{#if draft.availability.rarities.unique}}checked{{/if}} />{{localize "PF2E_MARKET_FORGE.Rarity.unique"}}</label>
         </div>
       </section>
 

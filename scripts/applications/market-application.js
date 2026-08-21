@@ -24,6 +24,7 @@ import { createCatalogViewState, toggleExpandedUuid, updateCatalogViewState } fr
 import { buildTabState, initialTabFromMode, normalizeMarketTab } from "./market-window-state.js";
 import { createSpellViewState, updateSpellViewState } from "./spell-view-state.js";
 import { readMarketListLimit } from "../settings/list-limit.js";
+import { CityForgeProvider, isCityForgeAvailability } from "../integrations/city-forge-provider.js";
 
 const { ApplicationV2, HandlebarsApplicationMixin } = foundry.applications.api;
 
@@ -82,6 +83,9 @@ export class MarketApplication extends HandlebarsApplicationMixin(ApplicationV2)
   #checkoutOperationId = null;
   #searchTimer = null;
   #profilesChangedHookId = null;
+  #cityForgeProvider;
+  #availabilitySession = null;
+  #cityForgeHookIds = [];
 
   constructor({
     actor,
@@ -102,7 +106,8 @@ export class MarketApplication extends HandlebarsApplicationMixin(ApplicationV2)
     receiptService = null,
     transactionService = null,
     productResolver = null,
-    checkoutTransport = null
+    checkoutTransport = null,
+    cityForgeProvider = null
   } = {}) {
     super();
     this.#actor = actor ?? null;
@@ -128,6 +133,7 @@ export class MarketApplication extends HandlebarsApplicationMixin(ApplicationV2)
     if (this.#activeTab === "sell") this.#cartService.setActiveDirection("sell");
     this.#receiptService = receiptService ?? new ReceiptService({ actorProvider });
     this.#checkoutTransport = checkoutTransport ?? { checkout: (request) => getMarketSocket().requestCheckout(request) };
+    this.#cityForgeProvider = cityForgeProvider ?? new CityForgeProvider();
     this.#productResolver = productResolver ?? new MarketProductResolver({
       catalogService: this.#catalogService,
       spellCatalogService: this.#spellCatalogService,
@@ -157,6 +163,7 @@ export class MarketApplication extends HandlebarsApplicationMixin(ApplicationV2)
     });
 
     this.#registerProfileChangeHook();
+    this.#registerCityForgeHooks();
   }
 
   get actor() {
@@ -168,6 +175,8 @@ export class MarketApplication extends HandlebarsApplicationMixin(ApplicationV2)
       globalThis.Hooks?.off?.(`${MODULE_ID}.profilesChanged`, this.#profilesChangedHookId);
       this.#profilesChangedHookId = null;
     }
+    for (const [hook, id] of this.#cityForgeHookIds) globalThis.Hooks?.off?.(hook, id);
+    this.#cityForgeHookIds = [];
     return super._onClose?.(options);
   }
 
@@ -178,7 +187,11 @@ export class MarketApplication extends HandlebarsApplicationMixin(ApplicationV2)
     const actor = this.#actor;
     const tabs = buildTabState(this.#activeTab);
     const levelContext = this.#resolveLevelContext();
-    const maximumItemLevel = levelContext.result?.maximumItemLevel ?? null;
+    this.#availabilitySession = await this.#cityForgeProvider.createSession(this.#profile);
+    const cityForgeMode = isCityForgeAvailability(this.#profile);
+    const maximumItemLevel = cityForgeMode
+      ? null
+      : levelContext.result?.maximumItemLevel ?? null;
     const balance = actor ? await this.#safeBalance(actor.uuid) : 0;
     const listLimit = readMarketListLimit();
 
@@ -188,7 +201,8 @@ export class MarketApplication extends HandlebarsApplicationMixin(ApplicationV2)
         profile: this.#profile,
         maximumItemLevel,
         filters: this.#catalogFilters,
-        limit: listLimit
+        limit: listLimit,
+        availabilitySession: this.#availabilitySession
       });
     }
 
@@ -200,7 +214,8 @@ export class MarketApplication extends HandlebarsApplicationMixin(ApplicationV2)
       spellCatalog = await this.#spellCatalogService.search({
         profile: this.#profile,
         filters: this.#spellView,
-        limit: listLimit
+        limit: listLimit,
+        availabilitySession: this.#availabilitySession
       });
       spellBuilder = await this.#prepareSpellBuilder(spellCatalog, maximumItemLevel);
     }
@@ -238,12 +253,23 @@ export class MarketApplication extends HandlebarsApplicationMixin(ApplicationV2)
         id: this.#profile.id,
         name: this.#profile.name,
         isDefault: this.#profile.id === defaultProfileId,
-        levelMode: game.i18n.localize(`PF2E_MARKET_FORGE.LevelMode.${this.#profile.availability.levelLimit.mode}`),
-        offset: this.#profile.availability.levelLimit.offset,
-        maximumItemLevel,
-        maximumItemLevelLabel: maximumItemLevel === null
-          ? game.i18n.localize("PF2E_MARKET_FORGE.Unlimited")
-          : String(maximumItemLevel)
+        levelMode: cityForgeMode
+          ? game.i18n.localize("PF2E_MARKET_FORGE.CityForge.ProviderLive")
+          : game.i18n.localize(`PF2E_MARKET_FORGE.LevelMode.${this.#profile.availability.levelLimit.mode}`),
+        offset: cityForgeMode ? 0 : this.#profile.availability.levelLimit.offset,
+        maximumItemLevel: cityForgeMode
+          ? this.#availabilitySession?.context?.availability?.baseLevel ?? null
+          : maximumItemLevel,
+        maximumItemLevelLabel: cityForgeMode
+          ? String(this.#availabilitySession?.context?.availability?.baseLevel ?? "—")
+          : maximumItemLevel === null
+            ? game.i18n.localize("PF2E_MARKET_FORGE.Unlimited")
+            : String(maximumItemLevel),
+        providerType: cityForgeMode ? "city-forge" : "manual",
+        providerConnected: cityForgeMode ? this.#availabilitySession?.connected === true : true,
+        providerLabel: cityForgeMode
+          ? this.#availabilitySession?.source?.label ?? game.i18n.localize("PF2E_MARKET_FORGE.CityForge.Unavailable")
+          : null
       },
       profileOptions: profiles.map((profile) => ({
         id: profile.id,
@@ -308,9 +334,15 @@ export class MarketApplication extends HandlebarsApplicationMixin(ApplicationV2)
       },
       checkout: this.#prepareCheckoutState(),
       marketLevelContext: {
-        partyName: levelContext.party?.name ?? null,
-        memberLevels: levelContext.memberLevels.join(", "),
-        calculationLabel: this.#levelCalculationLabel(levelContext)
+        partyName: cityForgeMode ? null : levelContext.party?.name ?? null,
+        memberLevels: cityForgeMode ? "" : levelContext.memberLevels.join(", "),
+        calculationLabel: cityForgeMode
+          ? (this.#availabilitySession?.connected
+              ? game.i18n.format("PF2E_MARKET_FORGE.CityForge.LiveSource", {
+                  source: this.#availabilitySession?.source?.label ?? "—"
+                })
+              : game.i18n.localize(`PF2E_MARKET_FORGE.Availability.${this.#availabilitySession?.reason ?? "city-forge-unavailable"}`))
+          : this.#levelCalculationLabel(levelContext)
       }
     });
   }
@@ -536,8 +568,15 @@ export class MarketApplication extends HandlebarsApplicationMixin(ApplicationV2)
       (input) => input.dataset.marketQuantity === uuid
     );
     const quantity = Math.max(1, Math.min(999, Math.trunc(Number(quantityInput?.value) || 1)));
-    const maximumItemLevel = this.#resolveLevelContext().result?.maximumItemLevel ?? null;
-    const entry = await this.#catalogService.getEntry(uuid, { profile: this.#profile, maximumItemLevel });
+    const maximumItemLevel = isCityForgeAvailability(this.#profile)
+      ? null
+      : this.#resolveLevelContext().result?.maximumItemLevel ?? null;
+    const session = await this.#cityForgeProvider.createSession(this.#profile);
+    const entry = await this.#catalogService.getEntry(uuid, {
+      profile: this.#profile,
+      maximumItemLevel,
+      availabilitySession: session
+    });
     if (!entry?.availability?.available) {
       ui.notifications?.warn?.(game.i18n.localize("PF2E_MARKET_FORGE.Errors.ItemUnavailable"));
       return;
@@ -565,8 +604,15 @@ export class MarketApplication extends HandlebarsApplicationMixin(ApplicationV2)
   async #addSpellItem() {
     const spellUuid = this.#spellView.selectedSpellUuid;
     if (!spellUuid) return;
-    const maximumItemLevel = this.#resolveLevelContext().result?.maximumItemLevel ?? null;
-    const spellEntry = await this.#spellCatalogService.getEntry(spellUuid, { profile: this.#profile });
+    const maximumItemLevel = isCityForgeAvailability(this.#profile)
+      ? null
+      : this.#resolveLevelContext().result?.maximumItemLevel ?? null;
+    const session = await this.#cityForgeProvider.createSession(this.#profile);
+    this.#availabilitySession = session;
+    const spellEntry = await this.#spellCatalogService.getEntry(spellUuid, {
+      profile: this.#profile,
+      availabilitySession: session
+    });
     if (!spellEntry) return;
     const kind = this.#normalizedSpellKind(spellEntry);
     const castRank = this.#normalizedSpellRank(spellEntry, kind);
@@ -639,9 +685,13 @@ export class MarketApplication extends HandlebarsApplicationMixin(ApplicationV2)
     const request = this.#buildCheckoutRequest(lines, direction);
 
     try {
-      const maximumItemLevel = this.#resolveLevelContext().result?.maximumItemLevel ?? null;
+      const session = await this.#cityForgeProvider.createSession(this.#profile);
+      const maximumItemLevel = isCityForgeAvailability(this.#profile)
+        ? null
+        : this.#resolveLevelContext().result?.maximumItemLevel ?? null;
       const { plan, validation } = await this.#transactionService.dryRun(request, {
         maximumItemLevel,
+        availabilitySession: session,
         requestedByUserId: globalThis.game?.user?.id ?? "unknown-user"
       });
       this.#checkoutState = {
@@ -907,7 +957,10 @@ export class MarketApplication extends HandlebarsApplicationMixin(ApplicationV2)
   async #prepareSpellBuilder(spellCatalog, maximumItemLevel) {
     let selected = null;
     const selectedUuid = this.#spellView.selectedSpellUuid;
-    if (selectedUuid) selected = spellCatalog.entries.find((entry) => entry.uuid === selectedUuid) ?? await this.#spellCatalogService.getEntry(selectedUuid, { profile: this.#profile });
+    if (selectedUuid) selected = spellCatalog.entries.find((entry) => entry.uuid === selectedUuid) ?? await this.#spellCatalogService.getEntry(selectedUuid, {
+      profile: this.#profile,
+      availabilitySession: this.#availabilitySession
+    });
     if (!selected && spellCatalog.entries.length) {
       selected = spellCatalog.entries[0];
       this.#spellView = updateSpellViewState(this.#spellView, "selectedSpellUuid", selected.uuid);
@@ -974,10 +1027,16 @@ export class MarketApplication extends HandlebarsApplicationMixin(ApplicationV2)
       rarity: entry.rarity,
       spellCost: entry.cost ?? ""
     });
+    const providerAvailability = this.#availabilitySession?.type === "city-forge"
+      ? this.#availabilitySession.evaluateEntry(
+          { ...entry, level: draft.itemLevel },
+          { sourceKind: "spell", level: draft.itemLevel }
+        )
+      : null;
     const availability = evaluateAvailability(
       { level: draft.itemLevel, rarity: entry.rarity, sourcePack: entry.sourcePack },
       this.#profile,
-      { maximumItemLevel, sourceKind: "spell" }
+      { maximumItemLevel, sourceKind: "spell", providerAvailability }
     );
     availability.reasons = [...new Set([...(availability.reasons ?? []), ...(draft.availability?.reasons ?? [])])];
     availability.available = availability.reasons.length === 0;
@@ -1122,6 +1181,11 @@ export class MarketApplication extends HandlebarsApplicationMixin(ApplicationV2)
         level: maximumItemLevel ?? "—"
       });
     }
+    if (reason === "city-forge-level-too-high") {
+      return game.i18n.format("PF2E_MARKET_FORGE.Availability.CityForgeLevelTooHigh", {
+        level: maximumItemLevel ?? "—"
+      });
+    }
     const key = `PF2E_MARKET_FORGE.Availability.${reason}`;
     const localized = game.i18n.localize(key);
     return localized === key ? String(reason) : localized;
@@ -1137,6 +1201,26 @@ export class MarketApplication extends HandlebarsApplicationMixin(ApplicationV2)
     const key = `PF2E_MARKET_FORGE.TransactionError.${error}`;
     const localized = game.i18n.localize(key);
     return localized === key ? String(error) : localized;
+  }
+
+  #registerCityForgeHooks() {
+    const hooks = globalThis.Hooks;
+    if (typeof hooks?.on !== "function") return;
+
+    for (const hook of [
+      "pf2eCityForge.ready",
+      "pf2eCityForge.settlementCreated",
+      "pf2eCityForge.settlementUpdated",
+      "pf2eCityForge.settlementDeleted"
+    ]) {
+      const id = hooks.on(hook, () => {
+        if (!isCityForgeAvailability(this.#profile)) return;
+        this.#catalogService.clearCache();
+        this.#spellCatalogService.clearCache();
+        if (this.rendered) void this.render();
+      });
+      this.#cityForgeHookIds.push([hook, id]);
+    }
   }
 
   #registerProfileChangeHook() {

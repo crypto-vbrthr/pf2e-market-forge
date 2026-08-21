@@ -8,7 +8,11 @@ const FULL_VALUE_CATEGORY_TO_SETTING = Object.freeze({
 
 export class PriceService {
   quotePurchase(product, quantity, profile) {
-    return quote(product, quantity, profile.pricing.buyMultiplier, "standard-buy", ["market-buy-multiplier"]);
+    const providerMultiplier = normalizeProviderMultiplier(product?.availability?.providerPriceMultiplier);
+    const multiplier = profile.pricing.buyMultiplier * providerMultiplier;
+    const reasons = ["market-buy-multiplier"];
+    if (providerMultiplier !== 1) reasons.push("city-forge-price-multiplier");
+    return quote(product, quantity, multiplier, "standard-buy", reasons);
   }
 
   quoteSale(product, quantity, profile) {
@@ -56,6 +60,11 @@ function quote(product, quantity, multiplier, rule, reasons) {
     rule,
     reasons
   };
+}
+
+function normalizeProviderMultiplier(value) {
+  const numeric = Number(value ?? 1);
+  return Number.isFinite(numeric) && numeric >= 0 ? numeric : 1;
 }
 
 function normalizePricePer(value) {

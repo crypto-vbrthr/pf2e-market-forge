@@ -1,5 +1,36 @@
 # Changelog
 
+## 0.2.0
+
+### Added
+- Optional live City Forge availability provider per MarketProfile.
+- City Forge source selector in the Market Profile editor.
+- Live settlement / market source discovery.
+- City Forge availability overlay for physical item catalogs.
+- City Forge availability overlay for spell catalogs and generated scroll/wand products.
+- City Forge buy-price multiplier composition.
+- Market header display of the active live City Forge source.
+- Market API integration diagnostics via `getIntegrations()` and `getCityForgeSources()`.
+- Live invalidation hooks for City Forge settlement create/update/delete events.
+- Authoritative GM-side City Forge context refresh during checkout.
+
+### Changed
+- Manual level and rarity controls are disabled in the profile editor while City Forge is the active availability provider.
+- Manual level and rarity gates are ignored for live City Forge profiles.
+- Existing profiles are canonicalized with `availability.provider = { type: "manual", sourceId: "" }`.
+- Open live-linked markets rerender when City Forge settlement data changes.
+
+### Safety
+- Live City Forge profiles fail closed when City Forge or the selected source is unavailable.
+- No client-supplied City Forge result is trusted by checkout.
+- The authority GM obtains a fresh provider context during serialized checkout revalidation.
+- Market Forge still owns source-compendium restrictions, transaction permissions, inventory/currency mutation, and receipts.
+
+### Compatibility
+- Profile schema remains v1.
+- Existing 0.1.0 profiles remain compatible and automatically operate in manual mode.
+- City Forge is optional; manual profiles behave exactly as before.
+
 ## 0.1.0 - Initial Release
 
 - Promoted the fully tested `0.1.0-rc.2` codebase to the first stable v0.1 release.

@@ -1,0 +1,1525 @@
+PF2E Market Forge 0.2.0 – Test Results
+Generated: 2026-08-21T11:10:55
+
+Automated Node tests: 189/189 passed
+JavaScript syntax checks: 53/53 passed
+JSON parse checks: PASS
+Cross-package City Forge -> Market Forge smoke test: PASS
+Authoritative GM City Forge refresh coverage: PASS
+Fail-closed provider coverage: PASS
+
+
+> pf2e-market-forge@0.2.0 test
+> node --test tests/*.test.js
+
+TAP version 13
+# Subtest: PF2e adapter boundary
+    # Subtest: builds PF2e scroll sources from the system base item and embeds the selected heightened spell
+    ok 1 - builds PF2e scroll sources from the system base item and embeds the selected heightened spell
+      ---
+      duration_ms: 4.703436
+      type: 'test'
+      ...
+    # Subtest: falls back to PF2e denomination fields when no copperValue getter is exposed
+    ok 2 - falls back to PF2e denomination fields when no copperValue getter is exposed
+      ---
+      duration_ms: 0.298964
+      type: 'test'
+      ...
+    # Subtest: uses PF2e addCurrency/removeCurrency with by-value removal
+    ok 3 - uses PF2e addCurrency/removeCurrency with by-value removal
+      ---
+      duration_ms: 0.601383
+      type: 'test'
+      ...
+    # Subtest: adds an already generated physical source through the same stack-aware inventory path
+    ok 4 - adds an already generated physical source through the same stack-aware inventory path
+      ---
+      duration_ms: 0.436509
+      type: 'test'
+      ...
+    # Subtest: records a created item and deletes exactly that item on rollback
+    ok 5 - records a created item and deletes exactly that item on rollback
+      ---
+      duration_ms: 0.47179
+      type: 'test'
+      ...
+    # Subtest: records a stack quantity and restores that exact quantity on rollback
+    ok 6 - records a stack quantity and restores that exact quantity on rollback
+      ---
+      duration_ms: 0.294237
+      type: 'test'
+      ...
+    1..6
+ok 1 - PF2e adapter boundary
+  ---
+  duration_ms: 7.684324
+  type: 'suite'
+  ...
+# Subtest: PF2e sale inventory mutations
+    # Subtest: reduces a partial owned stack and restores its exact previous quantity
+    ok 1 - reduces a partial owned stack and restores its exact previous quantity
+      ---
+      duration_ms: 0.497809
+      type: 'test'
+      ...
+    # Subtest: deletes a full owned stack and restores the source with its id on rollback
+    ok 2 - deletes a full owned stack and restores the source with its id on rollback
+      ---
+      duration_ms: 0.446604
+      type: 'test'
+      ...
+    # Subtest: rejects a sale quantity larger than the live stack
+    ok 3 - rejects a sale quantity larger than the live stack
+      ---
+      duration_ms: 0.519202
+      type: 'test'
+      ...
+    1..3
+ok 2 - PF2e sale inventory mutations
+  ---
+  duration_ms: 2.781181
+  type: 'suite'
+  ...
+# Subtest: ApplicationV2 shell
+    # Subtest: loads the configured catalog with the configured list limit and empty purchase-cart context
+    ok 1 - loads the configured catalog with the configured list limit and empty purchase-cart context
+      ---
+      duration_ms: 48.047671
+      type: 'test'
+      ...
+    # Subtest: refreshes an already-open market when market profiles change
+    ok 2 - refreshes an already-open market when market profiles change
+      ---
+      duration_ms: 3.283758
+      type: 'test'
+      ...
+    1..2
+ok 3 - ApplicationV2 shell
+  ---
+  duration_ms: 52.466294
+  type: 'suite'
+  ...
+# Subtest: GM-authoritative market service
+    # Subtest: ignores a client-claimed requester and recomputes the current market level before checkout
+    ok 1 - ignores a client-claimed requester and recomputes the current market level before checkout
+      ---
+      duration_ms: 3.674388
+      type: 'test'
+      ...
+    # Subtest: deduplicates retries with the same requester operation id
+    ok 2 - deduplicates retries with the same requester operation id
+      ---
+      duration_ms: 6.364213
+      type: 'test'
+      ...
+    # Subtest: rejects reuse of an operation id for a different checkout intent
+    ok 3 - rejects reuse of an operation id for a different checkout intent
+      ---
+      duration_ms: 0.869702
+      type: 'test'
+      ...
+    # Subtest: serializes two different players selling the same shared Party item and revalidates the second request
+    ok 4 - serializes two different players selling the same shared Party item and revalidates the second request
+      ---
+      duration_ms: 11.518568
+      type: 'test'
+      ...
+    # Subtest: refreshes the live City Forge provider on the authoritative GM before checkout
+    ok 5 - refreshes the live City Forge provider on the authoritative GM before checkout
+      ---
+      duration_ms: 0.96283
+      type: 'test'
+      ...
+    1..5
+ok 4 - GM-authoritative market service
+  ---
+  duration_ms: 25.007324
+  type: 'suite'
+  ...
+# Subtest: Availability contract
+    # Subtest: allows an item that passes level, rarity, and source checks
+    ok 1 - allows an item that passes level, rarity, and source checks
+      ---
+      duration_ms: 12.694224
+      type: 'test'
+      ...
+    # Subtest: allows a grouped PF2e price even when the floored single-unit value is zero
+    ok 2 - allows a grouped PF2e price even when the floored single-unit value is zero
+      ---
+      duration_ms: 0.13495
+      type: 'test'
+      ...
+    # Subtest: returns all relevant rejection reasons
+    ok 3 - returns all relevant rejection reasons
+      ---
+      duration_ms: 0.210252
+      type: 'test'
+      ...
+    1..3
+ok 5 - Availability contract
+  ---
+  duration_ms: 13.848079
+  type: 'suite'
+  ...
+# Subtest: PF2e capability guard
+    # Subtest: detects missing writable actor inventory methods
+    ok 1 - detects missing writable actor inventory methods
+      ---
+      duration_ms: 0.731897
+      type: 'test'
+      ...
+    # Subtest: detects rank-specific PF2e spell-item template support
+    ok 2 - detects rank-specific PF2e spell-item template support
+      ---
+      duration_ms: 1.998248
+      type: 'test'
+      ...
+    # Subtest: accepts the inventory capabilities used by Market Forge transactions
+    ok 3 - accepts the inventory capabilities used by Market Forge transactions
+      ---
+      duration_ms: 0.212245
+      type: 'test'
+      ...
+    1..3
+ok 6 - PF2e capability guard
+  ---
+  duration_ms: 4.653642
+  type: 'suite'
+  ...
+# Subtest: Cart contract
+    # Subtest: merges identical buy items into one line
+    ok 1 - merges identical buy items into one line
+      ---
+      duration_ms: 2.30913
+      type: 'test'
+      ...
+    # Subtest: keeps different spell ranks as separate products
+    ok 2 - keeps different spell ranks as separate products
+      ---
+      duration_ms: 0.138485
+      type: 'test'
+      ...
+    # Subtest: requires concrete inventory UUIDs for sell items
+    ok 3 - requires concrete inventory UUIDs for sell items
+      ---
+      duration_ms: 0.200127
+      type: 'test'
+      ...
+    # Subtest: updates quantities, totals, removes lines, and clears the purchase cart
+    ok 4 - updates quantities, totals, removes lines, and clears the purchase cart
+      ---
+      duration_ms: 0.466083
+      type: 'test'
+      ...
+    # Subtest: returns cloned state instead of the live cart object
+    ok 5 - returns cloned state instead of the live cart object
+      ---
+      duration_ms: 0.1618
+      type: 'test'
+      ...
+    1..5
+ok 7 - Cart contract
+  ---
+  duration_ms: 4.015744
+  type: 'suite'
+  ...
+# Subtest: Sale cart contract
+    # Subtest: merges the same concrete inventory item and keeps sale totals separate from purchases
+    ok 1 - merges the same concrete inventory item and keeps sale totals separate from purchases
+      ---
+      duration_ms: 1.697081
+      type: 'test'
+      ...
+    # Subtest: tracks the active cart direction without mutating either cart
+    ok 2 - tracks the active cart direction without mutating either cart
+      ---
+      duration_ms: 0.232946
+      type: 'test'
+      ...
+    1..2
+ok 8 - Sale cart contract
+  ---
+  duration_ms: 2.254519
+  type: 'suite'
+  ...
+# Subtest: Cart fractional-copper display contract
+    # Subtest: preserves an authoritative once-rounded line total when quantities change
+    ok 1 - preserves an authoritative once-rounded line total when quantities change
+      ---
+      duration_ms: 14.907431
+      type: 'test'
+      ...
+    1..1
+ok 9 - Cart fractional-copper display contract
+  ---
+  duration_ms: 15.092667
+  type: 'suite'
+  ...
+# Subtest: Cart grouped-price contract
+    # Subtest: recomputes a price.per line from the declared stack price when quantity changes
+    ok 1 - recomputes a price.per line from the declared stack price when quantity changes
+      ---
+      duration_ms: 0.795902
+      type: 'test'
+      ...
+    1..1
+ok 10 - Cart grouped-price contract
+  ---
+  duration_ms: 0.962239
+  type: 'suite'
+  ...
+# Subtest: CatalogService contract
+    # Subtest: maps only physical market items and respects price.per
+    ok 1 - maps only physical market items and respects price.per
+      ---
+      duration_ms: 0.984352
+      type: 'test'
+      ...
+    # Subtest: indexes configured compendia once and filters search, category, level, rarity, and source
+    ok 2 - indexes configured compendia once and filters search, category, level, rarity, and source
+      ---
+      duration_ms: 12.435942
+      type: 'test'
+      ...
+    # Subtest: marks unavailable entries or hides them according to the profile
+    ok 3 - marks unavailable entries or hides them according to the profile
+      ---
+      duration_ms: 0.739889
+      type: 'test'
+      ...
+    # Subtest: re-resolves a cart product by UUID and reapplies current market availability
+    ok 4 - re-resolves a cart product by UUID and reapplies current market availability
+      ---
+      duration_ms: 0.556446
+      type: 'test'
+      ...
+    # Subtest: can bypass the cached index for authoritative checkout revalidation
+    ok 5 - can bypass the cached index for authoritative checkout revalidation
+      ---
+      duration_ms: 1.499848
+      type: 'test'
+      ...
+    # Subtest: reports missing configured compendia without crashing the market
+    ok 6 - reports missing configured compendia without crashing the market
+      ---
+      duration_ms: 0.328438
+      type: 'test'
+      ...
+    1..6
+ok 11 - CatalogService contract
+  ---
+  duration_ms: 17.820529
+  type: 'suite'
+  ...
+# Subtest: marks physical compendium items without a positive market price unavailable
+ok 12 - marks physical compendium items without a positive market price unavailable
+  ---
+  duration_ms: 0.283701
+  type: 'test'
+  ...
+# Subtest: Catalog view state contract
+    # Subtest: creates stable filter defaults and updates one field immutably
+    ok 1 - creates stable filter defaults and updates one field immutably
+      ---
+      duration_ms: 1.277678
+      type: 'test'
+      ...
+    # Subtest: toggles expanded item UUIDs without mutating the input set
+    ok 2 - toggles expanded item UUIDs without mutating the input set
+      ---
+      duration_ms: 2.162512
+      type: 'test'
+      ...
+    # Subtest: rejects unsupported filters
+    ok 3 - rejects unsupported filters
+      ---
+      duration_ms: 0.372103
+      type: 'test'
+      ...
+    1..3
+ok 13 - Catalog view state contract
+  ---
+  duration_ms: 16.069849
+  type: 'suite'
+  ...
+# Subtest: Checkout request contract
+    # Subtest: keeps intent but strips every client-supplied price field
+    ok 1 - keeps intent but strips every client-supplied price field
+      ---
+      duration_ms: 2.141821
+      type: 'test'
+      ...
+    # Subtest: rejects empty checkout requests
+    ok 2 - rejects empty checkout requests
+      ---
+      duration_ms: 0.231364
+      type: 'test'
+      ...
+    # Subtest: never accepts requester identity from the request body
+    ok 3 - never accepts requester identity from the request body
+      ---
+      duration_ms: 0.433264
+      type: 'test'
+      ...
+    # Subtest: can normalize pure client intent without attaching identity
+    ok 4 - can normalize pure client intent without attaching identity
+      ---
+      duration_ms: 0.135881
+      type: 'test'
+      ...
+    1..4
+ok 14 - Checkout request contract
+  ---
+  duration_ms: 4.003897
+  type: 'suite'
+  ...
+# Subtest: City Forge live evaluation replaces manual level and rarity gates
+ok 15 - City Forge live evaluation replaces manual level and rarity gates
+  ---
+  duration_ms: 1.006575
+  type: 'test'
+  ...
+# Subtest: City Forge restricted access remains unavailable until an access rule grants it
+ok 16 - City Forge restricted access remains unavailable until an access rule grants it
+  ---
+  duration_ms: 0.24219
+  type: 'test'
+  ...
+# Subtest: missing provider is fail-closed
+ok 17 - missing provider is fail-closed
+  ---
+  duration_ms: 0.197112
+  type: 'test'
+  ...
+# Subtest: City Forge buy multiplier composes with Market Forge buy multiplier
+ok 18 - City Forge buy multiplier composes with Market Forge buy multiplier
+  ---
+  duration_ms: 0.896441
+  type: 'test'
+  ...
+# Subtest: City Forge price multiplier does not alter sale pricing
+ok 19 - City Forge price multiplier does not alter sale pricing
+  ---
+  duration_ms: 0.324182
+  type: 'test'
+  ...
+# Subtest: old stored profiles gain a manual provider configuration without schema change
+ok 20 - old stored profiles gain a manual provider configuration without schema change
+  ---
+  duration_ms: 1.915755
+  type: 'test'
+  ...
+# Subtest: live City Forge source survives profile serialization
+ok 21 - live City Forge source survives profile serialization
+  ---
+  duration_ms: 0.614783
+  type: 'test'
+  ...
+# Subtest: profile editor can choose manual or live City Forge availability
+ok 22 - profile editor can choose manual or live City Forge availability
+  ---
+  duration_ms: 1.464966
+  type: 'test'
+  ...
+# Subtest: manual level and rarity controls are disabled while City Forge is live
+ok 23 - manual level and rarity controls are disabled while City Forge is live
+  ---
+  duration_ms: 1.006606
+  type: 'test'
+  ...
+# Subtest: manual profiles do not activate the City Forge provider
+ok 24 - manual profiles do not activate the City Forge provider
+  ---
+  duration_ms: 0.788131
+  type: 'test'
+  ...
+# Subtest: live provider resolves source and evaluates Market Forge catalog-shaped entries
+ok 25 - live provider resolves source and evaluates Market Forge catalog-shaped entries
+  ---
+  duration_ms: 1.41394
+  type: 'test'
+  ...
+# Subtest: live profiles fail closed when City Forge is unavailable
+ok 26 - live profiles fail closed when City Forge is unavailable
+  ---
+  duration_ms: 0.211674
+  type: 'test'
+  ...
+# Subtest: provider normalization preserves live source ids and defaults older profiles to manual
+ok 27 - provider normalization preserves live source ids and defaults older profiles to manual
+  ---
+  duration_ms: 0.567253
+  type: 'test'
+  ...
+# Subtest: market subject mapping carries current Market Forge item and spell fields
+ok 28 - market subject mapping carries current Market Forge item and spell fields
+  ---
+  duration_ms: 0.157203
+  type: 'test'
+  ...
+# Subtest: market compendium source discovery
+    # Subtest: lists Item compendia only and sorts them by label
+    ok 1 - lists Item compendia only and sorts them by label
+      ---
+      duration_ms: 19.814355
+      type: 'test'
+      ...
+    # Subtest: marks configured sources without changing discovery order
+    ok 2 - marks configured sources without changing discovery order
+      ---
+      duration_ms: 1.129057
+      type: 'test'
+      ...
+    1..2
+ok 29 - market compendium source discovery
+  ---
+  duration_ms: 21.715089
+  type: 'suite'
+  ...
+# Subtest: release diagnostics contract
+    # Subtest: exposes a compact JSON-safe module/transport/profile/capability snapshot
+    ok 1 - exposes a compact JSON-safe module/transport/profile/capability snapshot
+      ---
+      duration_ms: 0.878845
+      type: 'test'
+      ...
+    # Subtest: keeps diagnose on the intentionally small public API
+    ok 2 - keeps diagnose on the intentionally small public API
+      ---
+      duration_ms: 0.131325
+      type: 'test'
+      ...
+    1..2
+ok 30 - release diagnostics contract
+  ---
+  duration_ms: 1.986511
+  type: 'suite'
+  ...
+# Subtest: release manifest
+    # Subtest: requests a package-specific Foundry socket namespace
+    ok 1 - requests a package-specific Foundry socket namespace
+      ---
+      duration_ms: 1.123749
+      type: 'test'
+      ...
+    1..1
+ok 31 - release manifest
+  ---
+  duration_ms: 1.943697
+  type: 'suite'
+  ...
+# Subtest: market list result limit
+    # Subtest: keeps configured values within the supported range
+    ok 1 - keeps configured values within the supported range
+      ---
+      duration_ms: 0.546292
+      type: 'test'
+      ...
+    # Subtest: clamps out-of-range values and truncates fractions
+    ok 2 - clamps out-of-range values and truncates fractions
+      ---
+      duration_ms: 0.139017
+      type: 'test'
+      ...
+    # Subtest: falls back for invalid values
+    ok 3 - falls back for invalid values
+      ---
+      duration_ms: 0.086649
+      type: 'test'
+      ...
+    # Subtest: reads the dedicated world setting
+    ok 4 - reads the dedicated world setting
+      ---
+      duration_ms: 0.274298
+      type: 'test'
+      ...
+    1..4
+ok 32 - market list result limit
+  ---
+  duration_ms: 1.809438
+  type: 'suite'
+  ...
+# Subtest: release localization contract
+    # Subtest: keeps German and English localization key sets identical
+    ok 1 - keeps German and English localization key sets identical
+      ---
+      duration_ms: 2.670366
+      type: 'test'
+      ...
+    # Subtest: localizes authority-session failures in both languages
+    ok 2 - localizes authority-session failures in both languages
+      ---
+      duration_ms: 0.678408
+      type: 'test'
+      ...
+    1..2
+ok 33 - release localization contract
+  ---
+  duration_ms: 4.072119
+  type: 'suite'
+  ...
+# Subtest: Market level context contract
+    # Subtest: counts only character members for party-derived market level
+    ok 1 - counts only character members for party-derived market level
+      ---
+      duration_ms: 1.412659
+      type: 'test'
+      ...
+    # Subtest: prefers the active party when the character belongs to it
+    ok 2 - prefers the active party when the character belongs to it
+      ---
+      duration_ms: 0.145867
+      type: 'test'
+      ...
+    # Subtest: falls back to a standalone character level
+    ok 3 - falls back to a standalone character level
+      ---
+      duration_ms: 0.244003
+      type: 'test'
+      ...
+    1..3
+ok 34 - Market level context contract
+  ---
+  duration_ms: 2.535055
+  type: 'suite'
+  ...
+# pf2e-market-forge | Authoritative checkout query failed Error: boom
+#     at Object.checkout [90m(file:///mnt/data/pf2e-market-forge-0.2.0/[39mtests/market-socket.test.js:148:74[90m)[39m
+#     at \#handleCheckoutQuery [90m(file:///mnt/data/pf2e-market-forge-0.2.0/[39mscripts/socket/market-socket.js:301:42[90m)[39m
+#     at config.queries.<computed> [90m(file:///mnt/data/pf2e-market-forge-0.2.0/[39mscripts/socket/market-socket.js:68:78[90m)[39m
+#     at user.query [90m(file:///mnt/data/pf2e-market-forge-0.2.0/[39mtests/market-socket.test.js:35:12[90m)[39m
+#     at \#requestPlayerCheckout [90m(file:///mnt/data/pf2e-market-forge-0.2.0/[39mscripts/socket/market-socket.js:158:45[90m)[39m
+#     at async TestContext.<anonymous> [90m(file:///mnt/data/pf2e-market-forge-0.2.0/[39mtests/market-socket.test.js:149:20[90m)[39m
+# [90m    at async Test.run (node:internal/test_runner/test:1054:7)[39m
+# [90m    at async Suite.processPendingSubtests (node:internal/test_runner/test:744:7)[39m
+# Subtest: GM-authoritative Foundry User query transport
+    # Subtest: provisions a targeted requester session before checkout and returns a compact result
+    ok 1 - provisions a targeted requester session before checkout and returns a compact result
+      ---
+      duration_ms: 2.998173
+      type: 'test'
+      ...
+    # Subtest: does not reveal another user's GM-issued session token to a caller that claims their id
+    ok 2 - does not reveal another user's GM-issued session token to a caller that claims their id
+      ---
+      duration_ms: 0.925444
+      type: 'test'
+      ...
+    # Subtest: returns an immediate authority error if the GM checkout handler throws instead of timing out
+    ok 3 - returns an immediate authority error if the GM checkout handler throws instead of timing out
+      ---
+      duration_ms: 1.900773
+      type: 'test'
+      ...
+    # Subtest: maps a rejected checkout query timeout to authority-timeout
+    ok 4 - maps a rejected checkout query timeout to authority-timeout
+      ---
+      duration_ms: 0.528816
+      type: 'test'
+      ...
+    # Subtest: refreshes an expired authority session and retries checkout once
+    ok 5 - refreshes an expired authority session and retries checkout once
+      ---
+      duration_ms: 0.783554
+      type: 'test'
+      ...
+    # Subtest: prefers Foundry's designated activeGM over fallback id ordering
+    ok 6 - prefers Foundry's designated activeGM over fallback id ordering
+      ---
+      duration_ms: 0.162461
+      type: 'test'
+      ...
+    # Subtest: fails safely when no active GM exists
+    ok 7 - fails safely when no active GM exists
+      ---
+      duration_ms: 0.339835
+      type: 'test'
+      ...
+    # Subtest: keeps the raw module socket only for profile-change broadcasts
+    ok 8 - keeps the raw module socket only for profile-change broadcasts
+      ---
+      duration_ms: 6.129324
+      type: 'test'
+      ...
+    1..8
+ok 35 - GM-authoritative Foundry User query transport
+  ---
+  duration_ms: 14.867663
+  type: 'suite'
+  ...
+# Subtest: Market window state contract
+    # Subtest: opens buy for buy and browse modes
+    ok 1 - opens buy for buy and browse modes
+      ---
+      duration_ms: 0.514915
+      type: 'test'
+      ...
+    # Subtest: opens sell when launched in sell mode
+    ok 2 - opens sell when launched in sell mode
+      ---
+      duration_ms: 1.411557
+      type: 'test'
+      ...
+    # Subtest: rejects unknown tabs by falling back to buy
+    ok 3 - rejects unknown tabs by falling back to buy
+      ---
+      duration_ms: 0.439143
+      type: 'test'
+      ...
+    # Subtest: marks exactly one tab active
+    ok 4 - marks exactly one tab active
+      ---
+      duration_ms: 0.182011
+      type: 'test'
+      ...
+    1..4
+ok 36 - Market window state contract
+  ---
+  duration_ms: 3.539236
+  type: 'suite'
+  ...
+# Subtest: CopperValue contract
+    # Subtest: represents decimal GP prices exactly in copper
+    ok 1 - represents decimal GP prices exactly in copper
+      ---
+      duration_ms: 0.539822
+      type: 'test'
+      ...
+    # Subtest: round-trips PF2e coin denominations
+    ok 2 - round-trips PF2e coin denominations
+      ---
+      duration_ms: 1.425918
+      type: 'test'
+      ...
+    # Subtest: rejects fractional or negative copper values
+    ok 3 - rejects fractional or negative copper values
+      ---
+      duration_ms: 0.266997
+      type: 'test'
+      ...
+    # Subtest: rounds multipliers to the nearest copper
+    ok 4 - rounds multipliers to the nearest copper
+      ---
+      duration_ms: 0.114961
+      type: 'test'
+      ...
+    1..4
+ok 37 - CopperValue contract
+  ---
+  duration_ms: 3.28581
+  type: 'suite'
+  ...
+# Subtest: Party-derived market level contract
+    # Subtest: floors average party level before applying offset
+    ok 1 - floors average party level before applying offset
+      ---
+      duration_ms: 2.017177
+      type: 'test'
+      ...
+    # Subtest: supports highest and lowest member modes
+    ok 2 - supports highest and lowest member modes
+      ---
+      duration_ms: 0.167388
+      type: 'test'
+      ...
+    # Subtest: supports a fixed level
+    ok 3 - supports a fixed level
+      ---
+      duration_ms: 0.214849
+      type: 'test'
+      ...
+    # Subtest: returns null for unlimited markets
+    ok 4 - returns null for unlimited markets
+      ---
+      duration_ms: 0.151966
+      type: 'test'
+      ...
+    # Subtest: requires party data for party modes
+    ok 5 - requires party data for party modes
+      ---
+      duration_ms: 0.297622
+      type: 'test'
+      ...
+    1..5
+ok 38 - Party-derived market level contract
+  ---
+  duration_ms: 3.97957
+  type: 'suite'
+  ...
+# Subtest: Milestone 1 launch permission contract
+    # Subtest: allows a GM to open supported actor types
+    ok 1 - allows a GM to open supported actor types
+      ---
+      duration_ms: 0.801461
+      type: 'test'
+      ...
+    # Subtest: allows players only when PF2e says they may update the actor
+    ok 2 - allows players only when PF2e says they may update the actor
+      ---
+      duration_ms: 0.883382
+      type: 'test'
+      ...
+    # Subtest: does not expose Market Forge on unrelated actor types
+    ok 3 - does not expose Market Forge on unrelated actor types
+      ---
+      duration_ms: 0.14146
+      type: 'test'
+      ...
+    1..3
+ok 39 - Milestone 1 launch permission contract
+  ---
+  duration_ms: 2.649866
+  type: 'suite'
+  ...
+# Subtest: transaction permission contract
+    # Subtest: checks update permission on both inventory and currency actors
+    ok 1 - checks update permission on both inventory and currency actors
+      ---
+      duration_ms: 0.439002
+      type: 'test'
+      ...
+    1..1
+ok 40 - transaction permission contract
+  ---
+  duration_ms: 0.600101
+  type: 'suite'
+  ...
+# Subtest: player-safe runtime IDs
+    # Subtest: uses Foundry randomID when crypto.randomUUID is unavailable
+    ok 1 - uses Foundry randomID when crypto.randomUUID is unavailable
+      ---
+      duration_ms: 0.597678
+      type: 'test'
+      ...
+    # Subtest: can create purchase and sale cart lines without crypto.randomUUID
+    ok 2 - can create purchase and sale cart lines without crypto.randomUUID
+      ---
+      duration_ms: 1.200293
+      type: 'test'
+      ...
+    1..2
+ok 41 - player-safe runtime IDs
+  ---
+  duration_ms: 2.29589
+  type: 'suite'
+  ...
+# Subtest: ItemPreviewService contract
+    # Subtest: loads and enriches a physical item lazily, then caches the preview
+    ok 1 - loads and enriches a physical item lazily, then caches the preview
+      ---
+      duration_ms: 2.959295
+      type: 'test'
+      ...
+    # Subtest: opens the original item sheet on demand
+    ok 2 - opens the original item sheet on demand
+      ---
+      duration_ms: 0.254238
+      type: 'test'
+      ...
+    # Subtest: rejects non-physical preview targets
+    ok 3 - rejects non-physical preview targets
+      ---
+      duration_ms: 0.674792
+      type: 'test'
+      ...
+    1..3
+ok 42 - ItemPreviewService contract
+  ---
+  duration_ms: 5.005786
+  type: 'suite'
+  ...
+# Subtest: Pricing contract
+    # Subtest: buys at the configured purchase multiplier
+    ok 1 - buys at the configured purchase multiplier
+      ---
+      duration_ms: 0.906106
+      type: 'test'
+      ...
+    # Subtest: sells normal equipment at 50 percent by default
+    ok 2 - sells normal equipment at 50 percent by default
+      ---
+      duration_ms: 0.147178
+      type: 'test'
+      ...
+    # Subtest: sells art-object treasure at full value
+    ok 3 - sells art-object treasure at full value
+      ---
+      duration_ms: 0.119728
+      type: 'test'
+      ...
+    # Subtest: sells gem treasure at full value
+    ok 4 - sells gem treasure at full value
+      ---
+      duration_ms: 0.085107
+      type: 'test'
+      ...
+    # Subtest: sells material treasure at full value
+    ok 5 - sells material treasure at full value
+      ---
+      duration_ms: 0.070855
+      type: 'test'
+      ...
+    # Subtest: rejects zero quantities
+    ok 6 - rejects zero quantities
+      ---
+      duration_ms: 0.259295
+      type: 'test'
+      ...
+    1..6
+ok 43 - Pricing contract
+  ---
+  duration_ms: 2.418833
+  type: 'suite'
+  ...
+# Subtest: rounds a multiplied stack only once instead of multiplying a rounded unit price
+ok 44 - rounds a multiplied stack only once instead of multiplying a rounded unit price
+  ---
+  duration_ms: 0.100249
+  type: 'test'
+  ...
+# Subtest: preserves PF2e grouped price.per semantics before applying market multipliers
+ok 45 - preserves PF2e grouped price.per semantics before applying market multipliers
+  ---
+  duration_ms: 0.336309
+  type: 'test'
+  ...
+# Subtest: shared MarketProductResolver contract
+    # Subtest: uses the same fresh catalog resolution contract for authoritative item checkout
+    ok 1 - uses the same fresh catalog resolution contract for authoritative item checkout
+      ---
+      duration_ms: 1.930157
+      type: 'test'
+      ...
+    # Subtest: re-resolves the exact owned inventory item for sale
+    ok 2 - re-resolves the exact owned inventory item for sale
+      ---
+      duration_ms: 0.683155
+      type: 'test'
+      ...
+    # Subtest: applies profile spell-item enablement before generating a purchase source
+    ok 3 - applies profile spell-item enablement before generating a purchase source
+      ---
+      duration_ms: 0.589996
+      type: 'test'
+      ...
+    1..3
+ok 46 - shared MarketProductResolver contract
+  ---
+  duration_ms: 3.982415
+  type: 'suite'
+  ...
+# Subtest: MarketProfileService contract
+    # Subtest: ships with a default profile
+    ok 1 - ships with a default profile
+      ---
+      duration_ms: 1.006015
+      type: 'test'
+      ...
+    # Subtest: returns clones instead of mutable profile references
+    ok 2 - returns clones instead of mutable profile references
+      ---
+      duration_ms: 0.202981
+      type: 'test'
+      ...
+    # Subtest: rejects invalid profiles
+    ok 3 - rejects invalid profiles
+      ---
+      duration_ms: 0.669955
+      type: 'test'
+      ...
+    1..3
+ok 47 - MarketProfileService contract
+  ---
+  duration_ms: 2.736725
+  type: 'suite'
+  ...
+# Subtest: Market level settings bridge
+    # Subtest: maps settings into the default profile level-limit contract
+    ok 1 - maps settings into the default profile level-limit contract
+      ---
+      duration_ms: 1.613537
+      type: 'test'
+      ...
+    # Subtest: supports a fixed market level
+    ok 2 - supports a fixed market level
+      ---
+      duration_ms: 0.372523
+      type: 'test'
+      ...
+    # Subtest: supports unlimited markets
+    ok 3 - supports unlimited markets
+      ---
+      duration_ms: 0.27598
+      type: 'test'
+      ...
+    # Subtest: clamps numeric setting values to supported ranges
+    ok 4 - clamps numeric setting values to supported ranges
+      ---
+      duration_ms: 0.12827
+      type: 'test'
+      ...
+    # Subtest: falls back from invalid string settings
+    ok 5 - falls back from invalid string settings
+      ---
+      duration_ms: 0.103804
+      type: 'test'
+      ...
+    # Subtest: does not mutate the source profile
+    ok 6 - does not mutate the source profile
+      ---
+      duration_ms: 0.185525
+      type: 'test'
+      ...
+    # Subtest: reads all four settings through an injectable getter
+    ok 7 - reads all four settings through an injectable getter
+      ---
+      duration_ms: 0.112297
+      type: 'test'
+      ...
+    1..7
+ok 48 - Market level settings bridge
+  ---
+  duration_ms: 3.729269
+  type: 'suite'
+  ...
+# Subtest: Milestone 7.1 profile UI contract
+    # Subtest: lets the market switch profiles and gives GMs a profile-manager entry point
+    ok 1 - lets the market switch profiles and gives GMs a profile-manager entry point
+      ---
+      duration_ms: 0.758596
+      type: 'test'
+      ...
+    # Subtest: exposes named profiles, per-profile rules, and separate item/spell compendium selectors
+    ok 2 - exposes named profiles, per-profile rules, and separate item/spell compendium selectors
+      ---
+      duration_ms: 0.24186
+      type: 'test'
+      ...
+    1..2
+ok 49 - Milestone 7.1 profile UI contract
+  ---
+  duration_ms: 2.043676
+  type: 'suite'
+  ...
+# Subtest: MarketProfile contract
+    # Subtest: creates a valid schema-v1 default profile
+    ok 1 - creates a valid schema-v1 default profile
+      ---
+      duration_ms: 1.313031
+      type: 'test'
+      ...
+    # Subtest: deep-merges nested overrides without destroying defaults
+    ok 2 - deep-merges nested overrides without destroying defaults
+      ---
+      duration_ms: 0.279836
+      type: 'test'
+      ...
+    # Subtest: rejects malformed fixed-level profiles
+    ok 3 - rejects malformed fixed-level profiles
+      ---
+      duration_ms: 0.229551
+      type: 'test'
+      ...
+    1..3
+ok 50 - MarketProfile contract
+  ---
+  duration_ms: 3.006135
+  type: 'suite'
+  ...
+# Subtest: Purchase receipt
+    # Subtest: renders line totals and escapes item/actor names
+    ok 1 - renders line totals and escapes item/actor names
+      ---
+      duration_ms: 1.567718
+      type: 'test'
+      ...
+    1..1
+ok 51 - Purchase receipt
+  ---
+  duration_ms: 2.521966
+  type: 'suite'
+  ...
+# Subtest: Sale receipt
+    # Subtest: renders sale proceeds and resulting balance
+    ok 1 - renders sale proceeds and resulting balance
+      ---
+      duration_ms: 0.283331
+      type: 'test'
+      ...
+    1..1
+ok 52 - Sale receipt
+  ---
+  duration_ms: 0.381877
+  type: 'suite'
+  ...
+# Subtest: Sale inventory contract
+    # Subtest: maps an ordinary owned item with current quantity and unit value
+    ok 1 - maps an ordinary owned item with current quantity and unit value
+      ---
+      duration_ms: 1.039995
+      type: 'test'
+      ...
+    # Subtest: respects PF2e price.per when determining unit value
+    ok 2 - respects PF2e price.per when determining unit value
+      ---
+      duration_ms: 0.237072
+      type: 'test'
+      ...
+    # Subtest: keeps grouped prices sellable even when one unit is worth less than one copper
+    ok 3 - keeps grouped prices sellable even when one unit is worth less than one copper
+      ---
+      duration_ms: 0.286445
+      type: 'test'
+      ...
+    # Subtest: marks treasure categories used by full-value sale pricing
+    ok 4 - marks treasure categories used by full-value sale pricing
+      ---
+      duration_ms: 0.189892
+      type: 'test'
+      ...
+    # Subtest: does not block treasure merely because PF2e reports it as equipped/carried
+    ok 5 - does not block treasure merely because PF2e reports it as equipped/carried
+      ---
+      duration_ms: 0.171545
+      type: 'test'
+      ...
+    # Subtest: blocks currency, temporary, unidentified, equipped, invested, contained, subitem-bearing, and valueless items
+    ok 6 - blocks currency, temporary, unidentified, equipped, invested, contained, subitem-bearing, and valueless items
+      ---
+      duration_ms: 0.506773
+      type: 'test'
+      ...
+    # Subtest: lists and re-resolves concrete actor inventory entries
+    ok 7 - lists and re-resolves concrete actor inventory entries
+      ---
+      duration_ms: 0.391542
+      type: 'test'
+      ...
+    1..7
+ok 53 - Sale inventory contract
+  ---
+  duration_ms: 4.969761
+  type: 'suite'
+  ...
+# Subtest: Foundry settings registration
+    # Subtest: registers global UI settings, hidden M6 migration values, and the profile manager menu
+    ok 1 - registers global UI settings, hidden M6 migration values, and the profile manager menu
+      ---
+      duration_ms: 1.116458
+      type: 'test'
+      ...
+    1..1
+ok 54 - Foundry settings registration
+  ---
+  duration_ms: 2.022584
+  type: 'suite'
+  ...
+# Subtest: SpellCatalogService contract
+    # Subtest: maps ordinary ranked spells and excludes cantrips, focus spells, and rituals
+    ok 1 - maps ordinary ranked spells and excludes cantrips, focus spells, and rituals
+      ---
+      duration_ms: 0.744846
+      type: 'test'
+      ...
+    # Subtest: indexes configured spell packs once and filters name, rank, tradition, rarity, and source
+    ok 2 - indexes configured spell packs once and filters name, rank, tradition, rarity, and source
+      ---
+      duration_ms: 2.095683
+      type: 'test'
+      ...
+    # Subtest: re-resolves a specific spell entry and applies current market rarity/source availability
+    ok 3 - re-resolves a specific spell entry and applies current market rarity/source availability
+      ---
+      duration_ms: 0.348738
+      type: 'test'
+      ...
+    1..3
+ok 55 - SpellCatalogService contract
+  ---
+  duration_ms: 4.297664
+  type: 'suite'
+  ...
+# Subtest: Spell extra-cost hardening
+    # Subtest: parses fixed English and German currency costs
+    ok 1 - parses fixed English and German currency costs
+      ---
+      duration_ms: 1.727275
+      type: 'test'
+      ...
+    # Subtest: rejects variable and non-monetary free-text costs
+    ok 2 - rejects variable and non-monetary free-text costs
+      ---
+      duration_ms: 0.13435
+      type: 'test'
+      ...
+    # Subtest: adds a fixed spell cost to scroll price but not to an ordinary wand price
+    ok 3 - adds a fixed spell cost to scroll price but not to an ordinary wand price
+      ---
+      duration_ms: 0.665899
+      type: 'test'
+      ...
+    # Subtest: blocks automatic scroll generation when a non-empty spell cost cannot be priced safely
+    ok 4 - blocks automatic scroll generation when a non-empty spell cost cannot be priced safely
+      ---
+      duration_ms: 0.18222
+      type: 'test'
+      ...
+    1..4
+ok 56 - Spell extra-cost hardening
+  ---
+  duration_ms: 3.77036
+  type: 'suite'
+  ...
+# Subtest: Spell-item draft contract
+    # Subtest: derives scroll item level and price from selected spell rank
+    ok 1 - derives scroll item level and price from selected spell rank
+      ---
+      duration_ms: 1.181665
+      type: 'test'
+      ...
+    # Subtest: derives standard wand item level and price from selected spell rank
+    ok 2 - derives standard wand item level and price from selected spell rank
+      ---
+      duration_ms: 0.157945
+      type: 'test'
+      ...
+    # Subtest: allows rank 10 scrolls
+    ok 3 - allows rank 10 scrolls
+      ---
+      duration_ms: 0.179166
+      type: 'test'
+      ...
+    # Subtest: rejects rank 10 standard wands
+    ok 4 - rejects rank 10 standard wands
+      ---
+      duration_ms: 0.381747
+      type: 'test'
+      ...
+    # Subtest: rejects cast ranks below the spell's base rank
+    ok 5 - rejects cast ranks below the spell's base rank
+      ---
+      duration_ms: 0.148931
+      type: 'test'
+      ...
+    1..5
+ok 57 - Spell-item draft contract
+  ---
+  duration_ms: 3.139223
+  type: 'suite'
+  ...
+# Subtest: Spell preview contract
+    # Subtest: renders the selected heightened variant rather than only the base spell
+    ok 1 - renders the selected heightened variant rather than only the base spell
+      ---
+      duration_ms: 1.202566
+      type: 'test'
+      ...
+    # Subtest: opens the original PF2e spell sheet
+    ok 2 - opens the original PF2e spell sheet
+      ---
+      duration_ms: 0.207798
+      type: 'test'
+      ...
+    1..2
+ok 58 - Spell preview contract
+  ---
+  duration_ms: 2.946125
+  type: 'suite'
+  ...
+# Subtest: Spell view state contract
+    # Subtest: starts with stable spell filters and scroll rank configuration
+    ok 1 - starts with stable spell filters and scroll rank configuration
+      ---
+      duration_ms: 1.276166
+      type: 'test'
+      ...
+    # Subtest: updates numeric rank/quantity without mutating the prior state
+    ok 2 - updates numeric rank/quantity without mutating the prior state
+      ---
+      duration_ms: 1.140705
+      type: 'test'
+      ...
+    # Subtest: rejects unknown spell view fields
+    ok 3 - rejects unknown spell view fields
+      ---
+      duration_ms: 0.456898
+      type: 'test'
+      ...
+    1..3
+ok 59 - Spell view state contract
+  ---
+  duration_ms: 3.685614
+  type: 'suite'
+  ...
+# Subtest: Milestone 6 template contract
+    # Subtest: keeps catalog filters and expandable item previews
+    ok 1 - keeps catalog filters and expandable item previews
+      ---
+      duration_ms: 0.993365
+      type: 'test'
+      ...
+    # Subtest: offers safe validation and real purchase checkout
+    ok 2 - offers safe validation and real purchase checkout
+      ---
+      duration_ms: 0.24265
+      type: 'test'
+      ...
+    # Subtest: offers inventory sale lines, partial quantities, a sale cart, and real sale checkout
+    ok 3 - offers inventory sale lines, partial quantities, a sale cart, and real sale checkout
+      ---
+      duration_ms: 0.248228
+      type: 'test'
+      ...
+    # Subtest: offers a live spell catalog, rank/type configurator, and spell-product cart previews
+    ok 4 - offers a live spell catalog, rank/type configurator, and spell-product cart previews
+      ---
+      duration_ms: 0.34347
+      type: 'test'
+      ...
+    1..4
+ok 60 - Milestone 6 template contract
+  ---
+  duration_ms: 2.922761
+  type: 'suite'
+  ...
+# Subtest: Cross-client transaction coordinator
+    # Subtest: serializes operations for the same actor key
+    ok 1 - serializes operations for the same actor key
+      ---
+      duration_ms: 5.627529
+      type: 'test'
+      ...
+    # Subtest: serializes transactions that overlap on either inventory or currency actor
+    ok 2 - serializes transactions that overlap on either inventory or currency actor
+      ---
+      duration_ms: 2.294158
+      type: 'test'
+      ...
+    # Subtest: allows unrelated actor keys to proceed independently
+    ok 3 - allows unrelated actor keys to proceed independently
+      ---
+      duration_ms: 0.288608
+      type: 'test'
+      ...
+    1..3
+ok 61 - Cross-client transaction coordinator
+  ---
+  duration_ms: 9.102029
+  type: 'suite'
+  ...
+# Subtest: TransactionPlan contract
+    # Subtest: accepts a plan whose authoritative line totals match its total
+    ok 1 - accepts a plan whose authoritative line totals match its total
+      ---
+      duration_ms: 2.432283
+      type: 'test'
+      ...
+    # Subtest: rejects unavailable products and total mismatches
+    ok 2 - rejects unavailable products and total mismatches
+      ---
+      duration_ms: 0.18213
+      type: 'test'
+      ...
+    1..2
+ok 62 - TransactionPlan contract
+  ---
+  duration_ms: 3.330958
+  type: 'suite'
+  ...
+# pf2e-market-forge | Purchase completed but receipt creation failed Error: chat unavailable
+#     at Object.createPurchaseReceipt [90m(file:///mnt/data/pf2e-market-forge-0.2.0/[39mtests/transaction-service.test.js:239:63[90m)[39m
+#     at \#executePurchaseValidated [90m(file:///mnt/data/pf2e-market-forge-0.2.0/[39mscripts/transactions/transaction-service.js:230:60[90m)[39m
+#     at async TransactionLock.run [90m(file:///mnt/data/pf2e-market-forge-0.2.0/[39mscripts/transactions/transaction-lock.js:18:14[90m)[39m
+#     at async TransactionService.checkout [90m(file:///mnt/data/pf2e-market-forge-0.2.0/[39mscripts/transactions/transaction-service.js:147:14[90m)[39m
+#     at async TestContext.<anonymous> [90m(file:///mnt/data/pf2e-market-forge-0.2.0/[39mtests/transaction-service.test.js:242:20[90m)[39m
+# [90m    at async Test.run (node:internal/test_runner/test:1054:7)[39m
+# [90m    at async Suite.processPendingSubtests (node:internal/test_runner/test:744:7)[39m
+# Subtest: Milestone 4 transaction execution
+    # Subtest: re-resolves products and ignores cart/client price claims
+    ok 1 - re-resolves products and ignores cart/client price claims
+      ---
+      duration_ms: 1.486848
+      type: 'test'
+      ...
+    # Subtest: completes a purchase, deducts money, adds items, and writes a receipt
+    ok 2 - completes a purchase, deducts money, adds items, and writes a receipt
+      ---
+      duration_ms: 1.341733
+      type: 'test'
+      ...
+    # Subtest: uses a generated purchase source for scrolls and wands instead of resolving a compendium item UUID
+    ok 3 - uses a generated purchase source for scrolls and wands instead of resolving a compendium item UUID
+      ---
+      duration_ms: 1.796058
+      type: 'test'
+      ...
+    # Subtest: rolls back prior item additions and refunds currency after an item failure
+    ok 4 - rolls back prior item additions and refunds currency after an item failure
+      ---
+      duration_ms: 0.624998
+      type: 'test'
+      ...
+    # Subtest: reports rollback-failed when compensation cannot fully restore state
+    ok 5 - reports rollback-failed when compensation cannot fully restore state
+      ---
+      duration_ms: 0.568254
+      type: 'test'
+      ...
+    # Subtest: does not mutate when funds validation fails
+    ok 6 - does not mutate when funds validation fails
+      ---
+      duration_ms: 0.43087
+      type: 'test'
+      ...
+    # Subtest: does not mutate when the requesting user lacks update permission
+    ok 7 - does not mutate when the requesting user lacks update permission
+      ---
+      duration_ms: 0.29608
+      type: 'test'
+      ...
+    # Subtest: does not roll back a successful purchase merely because its receipt fails
+    ok 8 - does not roll back a successful purchase merely because its receipt fails
+      ---
+      duration_ms: 1.43407
+      type: 'test'
+      ...
+# pf2e-market-forge | Sale completed but receipt creation failed Error: chat unavailable
+#     at Object.createSaleReceipt [90m(file:///mnt/data/pf2e-market-forge-0.2.0/[39mtests/transaction-service.test.js:495:59[90m)[39m
+#     at \#executeSaleValidated [90m(file:///mnt/data/pf2e-market-forge-0.2.0/[39mscripts/transactions/transaction-service.js:292:56[90m)[39m
+#     at async TransactionLock.run [90m(file:///mnt/data/pf2e-market-forge-0.2.0/[39mscripts/transactions/transaction-lock.js:18:14[90m)[39m
+#     at async TransactionService.checkout [90m(file:///mnt/data/pf2e-market-forge-0.2.0/[39mscripts/transactions/transaction-service.js:147:14[90m)[39m
+#     at async TestContext.<anonymous> [90m(file:///mnt/data/pf2e-market-forge-0.2.0/[39mtests/transaction-service.test.js:498:20[90m)[39m
+# [90m    at async Test.run (node:internal/test_runner/test:1054:7)[39m
+# [90m    at async Suite.processPendingSubtests (node:internal/test_runner/test:744:7)[39m
+    # Subtest: rejects a second same-actor transaction while the first lock is active
+    ok 9 - rejects a second same-actor transaction while the first lock is active
+      ---
+      duration_ms: 6.514486
+      type: 'test'
+      ...
+    # Subtest: refuses execution of a client-supplied plan
+    ok 10 - refuses execution of a client-supplied plan
+      ---
+      duration_ms: 0.732268
+      type: 'test'
+      ...
+    1..10
+ok 63 - Milestone 4 transaction execution
+  ---
+  duration_ms: 16.217338
+  type: 'suite'
+  ...
+# Subtest: Milestone 5 sale transaction execution
+    # Subtest: re-resolves the owned item, ignores quoted sale prices, and projects credited balance
+    ok 1 - re-resolves the owned item, ignores quoted sale prices, and projects credited balance
+      ---
+      duration_ms: 0.432212
+      type: 'test'
+      ...
+    # Subtest: completes a sale by removing inventory first and then crediting proceeds
+    ok 2 - completes a sale by removing inventory first and then crediting proceeds
+      ---
+      duration_ms: 0.765507
+      type: 'test'
+      ...
+    # Subtest: uses full value for gems during sale checkout
+    ok 3 - uses full value for gems during sale checkout
+      ---
+      duration_ms: 0.965944
+      type: 'test'
+      ...
+    # Subtest: rejects a requested quantity that is no longer present before mutation
+    ok 4 - rejects a requested quantity that is no longer present before mutation
+      ---
+      duration_ms: 0.380956
+      type: 'test'
+      ...
+    # Subtest: rejects inventory entries blocked by sellability rules before mutation
+    ok 5 - rejects inventory entries blocked by sellability rules before mutation
+      ---
+      duration_ms: 0.246075
+      type: 'test'
+      ...
+    # Subtest: restores already removed inventory when a later sale item removal fails
+    ok 6 - restores already removed inventory when a later sale item removal fails
+      ---
+      duration_ms: 0.50466
+      type: 'test'
+      ...
+    # Subtest: restores sold items if crediting proceeds fails
+    ok 7 - restores sold items if crediting proceeds fails
+      ---
+      duration_ms: 0.357451
+      type: 'test'
+      ...
+    # Subtest: compensates a partially credited balance when addCurrency throws
+    ok 8 - compensates a partially credited balance when addCurrency throws
+      ---
+      duration_ms: 0.381417
+      type: 'test'
+      ...
+    # Subtest: does not roll back a completed sale merely because its receipt fails
+    ok 9 - does not roll back a completed sale merely because its receipt fails
+      ---
+      duration_ms: 0.662464
+      type: 'test'
+      ...
+    1..9
+ok 64 - Milestone 5 sale transaction execution
+  ---
+  duration_ms: 5.04286
+  type: 'suite'
+  ...
+# Subtest: world market profile storage
+    # Subtest: falls back to the M6 level settings before profiles have been persisted
+    ok 1 - falls back to the M6 level settings before profiles have been persisted
+      ---
+      duration_ms: 1.293772
+      type: 'test'
+      ...
+    # Subtest: drops unused legacy transaction switches when reading stored M7 profiles
+    ok 2 - drops unused legacy transaction switches when reading stored M7 profiles
+      ---
+      duration_ms: 0.526872
+      type: 'test'
+      ...
+    # Subtest: serializes and parses validated named profiles
+    ok 3 - serializes and parses validated named profiles
+      ---
+      duration_ms: 0.990131
+      type: 'test'
+      ...
+    # Subtest: saves profiles, selects a default, and repairs the default when it is deleted
+    ok 4 - saves profiles, selects a default, and repairs the default when it is deleted
+      ---
+      duration_ms: 2.079619
+      type: 'test'
+      ...
+    # Subtest: creates stable unique profile ids
+    ok 5 - creates stable unique profile ids
+      ---
+      duration_ms: 0.399023
+      type: 'test'
+      ...
+    1..5
+ok 65 - world market profile storage
+  ---
+  duration_ms: 6.334349
+  type: 'suite'
+  ...
+1..65
+# tests 189
+# suites 48
+# pass 189
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 1056.633703
+
+Release contract:
+- Module version: 0.2.0
+- MarketProfile schema: v1
+- Public API: v1
+- City Forge dependency: optional

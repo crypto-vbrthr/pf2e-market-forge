@@ -34,7 +34,7 @@ export class MarketProductResolver {
     this.#saleInventoryService = saleInventoryService ?? new SaleInventoryService({ inventoryAdapter });
   }
 
-  async resolve(product, { profile, maximumItemLevel = null, authoritative = false, direction = "buy", itemActorUuid = null } = {}) {
+  async resolve(product, { profile, maximumItemLevel = null, authoritative = false, direction = "buy", itemActorUuid = null, availabilitySession = null } = {}) {
     if (!product || typeof product !== "object" || !profile) return null;
 
     if (product.kind === "item") {
@@ -46,7 +46,8 @@ export class MarketProductResolver {
       return this.#catalogService.getEntry(product.sourceUuid, {
         profile,
         maximumItemLevel,
-        fresh: authoritative
+        fresh: authoritative,
+        availabilitySession
       });
     }
 
@@ -56,7 +57,8 @@ export class MarketProductResolver {
 
     const spellEntry = await this.#spellCatalogService.getEntry(product.spellUuid, {
       profile,
-      fresh: authoritative
+      fresh: authoritative,
+      availabilitySession
     });
     if (!spellEntry) return null;
 
@@ -73,6 +75,13 @@ export class MarketProductResolver {
       spellCost: spellEntry.cost
     });
 
+    const providerAvailability = availabilitySession?.type === "city-forge"
+      ? availabilitySession.evaluateEntry(
+          { ...spellEntry, level: draft.itemLevel },
+          { sourceKind: "spell", level: draft.itemLevel }
+        )
+      : null;
+
     const availability = evaluateAvailability(
       {
         level: draft.itemLevel,
@@ -80,7 +89,7 @@ export class MarketProductResolver {
         sourcePack: spellEntry.sourcePack
       },
       profile,
-      { maximumItemLevel, sourceKind: "spell" }
+      { maximumItemLevel, sourceKind: "spell", providerAvailability }
     );
 
     availability.reasons = [...new Set([

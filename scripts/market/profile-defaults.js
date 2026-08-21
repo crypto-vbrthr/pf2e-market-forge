@@ -10,6 +10,10 @@ export function createDefaultMarketProfile(overrides = {}) {
       spellCompendia: ["pf2e.spells-srd"]
     },
     availability: {
+      provider: {
+        type: "manual",
+        sourceId: ""
+      },
       levelLimit: {
         mode: "party-average",
         offset: 0,
