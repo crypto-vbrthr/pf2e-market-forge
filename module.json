@@ -2,7 +2,7 @@
   "id": "pf2e-market-forge",
   "title": "PF2E Market Forge",
   "description": "Rules-aware PF2e marketplace with GM-authoritative serialized transactions, persistent market profiles, scroll/wand generation, hardened pricing, diagnostics, and optional live City Forge availability providers.",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "authors": [
     {
       "name": "Bully"
@@ -44,5 +44,5 @@
   "readme": "README.md",
   "url": "https://github.com/crypto-vbrthr/pf2e-market-forge",
   "manifest": "https://raw.githubusercontent.com/crypto-vbrthr/pf2e-market-forge/main/module.json",
-  "download": "https://github.com/crypto-vbrthr/pf2e-market-forge/releases/download/0.2.0/pf2e-market-forge.zip"
+  "download": "https://github.com/crypto-vbrthr/pf2e-market-forge/releases/download/0.2.1/pf2e-market-forge.zip"
 }

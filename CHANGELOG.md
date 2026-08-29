@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.2.1
+
+### Fixed
+- Preserve focus in the Buy search field while its debounced catalog search rerenders the Market Forge window.
+- Preserve focus in the Spell Items search field while its debounced spell search rerenders the Market Forge window.
+- Restore the cursor or text selection after rerender without forcing the market content to scroll.
+- Do not steal focus back if the user deliberately moved to another control before the delayed search executes.
+
 ## 0.2.0
 
 ### Added

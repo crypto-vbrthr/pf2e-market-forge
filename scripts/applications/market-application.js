@@ -23,6 +23,7 @@ import { getMarketSocket } from "../socket/market-socket.js";
 import { createCatalogViewState, toggleExpandedUuid, updateCatalogViewState } from "./catalog-view-state.js";
 import { buildTabState, initialTabFromMode, normalizeMarketTab } from "./market-window-state.js";
 import { createSpellViewState, updateSpellViewState } from "./spell-view-state.js";
+import { captureInputFocus, restoreInputFocus } from "./input-focus-state.js";
 import { readMarketListLimit } from "../settings/list-limit.js";
 import { CityForgeProvider, isCityForgeAvailability } from "../integrations/city-forge-provider.js";
 
@@ -373,10 +374,13 @@ export class MarketApplication extends HandlebarsApplicationMixin(ApplicationV2)
     const search = this.element.querySelector("[data-catalog-filter='search']");
     search?.addEventListener("input", (event) => {
       clearTimeout(this.#searchTimer);
-      const value = event.currentTarget.value;
-      this.#searchTimer = setTimeout(() => {
+      const input = event.currentTarget;
+      const value = input.value;
+      this.#searchTimer = setTimeout(async () => {
+        const focusState = captureInputFocus(input);
         this.#catalogFilters = updateCatalogViewState(this.#catalogFilters, "search", value);
-        this.render();
+        await this.render();
+        restoreInputFocus(this.element, "[data-catalog-filter='search']", focusState);
       }, 220);
     });
 
@@ -391,10 +395,13 @@ export class MarketApplication extends HandlebarsApplicationMixin(ApplicationV2)
     const spellSearch = this.element.querySelector("[data-spell-filter='search']");
     spellSearch?.addEventListener("input", (event) => {
       clearTimeout(this.#searchTimer);
-      const value = event.currentTarget.value;
-      this.#searchTimer = setTimeout(() => {
+      const input = event.currentTarget;
+      const value = input.value;
+      this.#searchTimer = setTimeout(async () => {
+        const focusState = captureInputFocus(input);
         this.#spellView = updateSpellViewState(this.#spellView, "search", value);
-        this.render();
+        await this.render();
+        restoreInputFocus(this.element, "[data-spell-filter='search']", focusState);
       }, 220);
     });
 

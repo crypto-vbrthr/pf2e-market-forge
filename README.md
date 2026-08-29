@@ -1,4 +1,4 @@
-# PF2E Market Forge 0.2.0
+# PF2E Market Forge 0.2.1
 
 PF2E Market Forge is a rules-aware marketplace for Foundry VTT with GM-authoritative serialized transactions, persistent market profiles, live PF2e catalog sources, scroll/wand generation, hardened pricing, receipts, and diagnostics.
 
@@ -11,6 +11,12 @@ An overview of the Forge Suite, its modules, add-ons, and shared documentation i
 
 **Forge Suite:** https://github.com/crypto-vbrthr/pf2e-forge-suite
 
+
+## 0.2.1: Search Focus Hotfix
+
+- Buy and spell-item search fields retain focus across debounced catalog rerenders.
+- Cursor position and text selections are restored without scrolling the market window.
+- Focus is not reclaimed if the user intentionally moves to another control before the delayed search runs.
 
 ## 0.2.0: Optional City Forge Provider Integration
 

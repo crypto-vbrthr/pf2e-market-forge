@@ -9,7 +9,7 @@ import { getMarketSocket } from "./socket/market-socket.js";
 import { PF2eCapabilityService } from "./pf2e/capabilities.js";
 
 Hooks.once("init", () => {
-  console.log(`${MODULE_ID} | initializing v0.2.0`);
+  console.log(`${MODULE_ID} | initializing v0.2.1`);
 
   registerSettings();
   registerCharacterSheetIntegration();
@@ -47,5 +47,5 @@ Hooks.once("ready", async () => {
     }
   }
 
-  console.log(`${MODULE_ID} | v0.2.0 ready`);
+  console.log(`${MODULE_ID} | v0.2.1 ready`);
 });
