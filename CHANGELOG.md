@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.2.2
+
+### Fixed
+- Party stash items are no longer rejected as equipped or invested when stale equipment state survives an inventory transfer.
+- PF2e items with `carried` usage are no longer treated as actively equipped for sale eligibility. PF2e intentionally considers carried-use items equipped for rules activation, which is broader than Market Forge's sale restriction.
+- Prefer PF2e's resolved `isInContainer` state over raw `system.containerId` data so stale container references do not block loose inventory items.
+- Items genuinely resolved inside a container remain unavailable for sale.
+
 ## 0.2.1
 
 ### Fixed

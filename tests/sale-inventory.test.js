@@ -93,12 +93,63 @@ describe("Sale inventory contract", () => {
     assert.equal(entry.availability.reasons.includes("equipped"), false);
   });
 
+
+  it("does not treat PF2e carried usage as actively equipped for sale", () => {
+    const carried = item({
+      isEquipped: true,
+      system: {
+        ...item().system,
+        usage: { value: "carried", type: "carried" }
+      }
+    });
+    const entry = mapOwnedItem(carried);
+    assert.equal(entry.availability.available, true);
+    assert.equal(entry.availability.reasons.includes("equipped"), false);
+  });
+
+  it("ignores stale equipped and invested state in Party inventory", () => {
+    const partyItem = item({
+      uuid: "Actor.party.Item.sword",
+      actor: { uuid: "Actor.party", type: "party" },
+      isEquipped: true,
+      isInvested: true,
+      system: {
+        ...item().system,
+        usage: { value: "held-in-one-hand", type: "held" }
+      }
+    });
+    const entry = mapOwnedItem(partyItem, { actorUuid: "Actor.party" });
+    assert.equal(entry.availability.available, true);
+    assert.equal(entry.availability.reasons.includes("equipped"), false);
+    assert.equal(entry.availability.reasons.includes("invested"), false);
+  });
+
+  it("trusts PF2e resolved container state over a stale raw container id", () => {
+    const looseItem = item({
+      isInContainer: false,
+      system: { ...item().system, containerId: "stale-container-id" }
+    });
+    const entry = mapOwnedItem(looseItem);
+    assert.equal(entry.availability.available, true);
+    assert.equal(entry.availability.reasons.includes("in-container"), false);
+  });
+
+  it("still blocks an item that PF2e resolves inside a real container", () => {
+    const contained = item({
+      isInContainer: true,
+      system: { ...item().system, containerId: "real-container-id" }
+    });
+    const entry = mapOwnedItem(contained);
+    assert.equal(entry.availability.available, false);
+    assert.ok(entry.availability.reasons.includes("in-container"));
+  });
+
   it("blocks currency, temporary, unidentified, equipped, invested, contained, subitem-bearing, and valueless items", () => {
     const cases = [
       ["currency", item({ type: "treasure", isCurrency: true, system: { ...item().system, category: "coin" } })],
       ["temporary", item({ isTemporary: true })],
       ["unidentified", item({ isIdentified: false })],
-      ["equipped", item({ isEquipped: true })],
+      ["equipped", item({ isEquipped: true, system: { ...item().system, usage: { value: "held-in-one-hand", type: "held" } } })],
       ["invested", item({ isInvested: true })],
       ["in-container", item({ isInContainer: true })],
       ["has-subitems", item({ subitems: new Map([["x", {}]]) })],

@@ -1,4 +1,4 @@
-# PF2E Market Forge 0.2.1
+# PF2E Market Forge 0.2.2
 
 PF2E Market Forge is a rules-aware marketplace for Foundry VTT with GM-authoritative serialized transactions, persistent market profiles, live PF2e catalog sources, scroll/wand generation, hardened pricing, receipts, and diagnostics.
 
@@ -12,18 +12,12 @@ An overview of the Forge Suite, its modules, add-ons, and shared documentation i
 **Forge Suite:** https://github.com/crypto-vbrthr/pf2e-forge-suite
 
 
-## Feedback, Bug Reports & Feature Requests
+## 0.2.2: Party Stash Sale Eligibility Hotfix
 
-Found a bug, have an idea for an improvement, or would like to suggest a new feature?
-
-Feedback is always welcome. Please feel free to open a new **GitHub Issue** at any time, whether you want to report a problem, suggest a quality-of-life improvement, propose a new feature, or share an idea for how the module could be made more useful.
-
-When reporting a bug, please include as much relevant information as possible, such as the Foundry VTT version, PF2e system version, module version, steps to reproduce the issue, and any console errors or screenshots that may help identify the problem.
-
-Suggestions and feature requests are equally welcome. Even small ideas can lead to useful improvements.
-
-**Open an issue here:** https://github.com/crypto-vbrthr/pf2e-market-forge/issues
-
+- Party inventory items are no longer blocked from sale by stale or PF2e-internal equipped/invested state.
+- PF2e `carried` usage is no longer treated as actively equipped for sale eligibility.
+- Market Forge now prefers PF2e's resolved `isInContainer` state over a raw `system.containerId`, preventing stale container references from blocking loose items.
+- Items that PF2e actually resolves inside a container remain protected from sale.
 
 ## 0.2.1: Search Focus Hotfix
 

@@ -60,14 +60,19 @@ export function mapOwnedItem(item, { actorUuid = null } = {}) {
       : [];
 
   const reasons = [];
+  const isPartyInventory = isPartyOwnedItem(item);
   if (isCurrencyItem(item, treasureCategory)) reasons.push("currency");
   if (item.isTemporary === true || item.system?.temporary === true || traits.includes("infused")) reasons.push("temporary");
   if (isExplicitlyUnidentified(item)) reasons.push("unidentified");
-  // PF2e may expose treasure items as carried/equipped. That state is not a meaningful
-  // sale restriction for treasure (gems, art objects, materials, etc.).
-  if (itemType !== "treasure" && item.isEquipped === true) reasons.push("equipped");
-  if (item.isInvested === true) reasons.push("invested");
-  if (item.isInContainer === true || Boolean(item.system?.containerId)) reasons.push("in-container");
+  // PF2e's `isEquipped` is a rules-activation concept: items whose usage is `carried`
+  // are considered equipped even when they are merely in inventory. It is therefore
+  // too broad to use directly as a sale restriction. Party stashes also cannot
+  // meaningfully equip or invest items, even if stale item state survived a transfer.
+  if (!isPartyInventory && itemType !== "treasure" && isActivelyEquippedForSale(item)) reasons.push("equipped");
+  if (!isPartyInventory && item.isInvested === true) reasons.push("invested");
+  // Prefer PF2e's resolved container state. A raw containerId can be stale after an
+  // inventory move and must not by itself make an otherwise loose item unsellable.
+  if (isActuallyInContainer(item)) reasons.push("in-container");
   if (hasSubitems(item)) reasons.push("has-subitems");
   if (quantity < 1) reasons.push("no-quantity");
   if (stackPrice < 1) reasons.push("no-value");
@@ -97,6 +102,40 @@ export function mapOwnedItem(item, { actorUuid = null } = {}) {
       reasons
     }
   };
+}
+
+
+function isPartyOwnedItem(item) {
+  return (item.actor?.type ?? item.parent?.type ?? null) === "party";
+}
+
+function isActivelyEquippedForSale(item) {
+  const usage = item.system?.usage;
+  const usageType = typeof usage?.type === "string"
+    ? usage.type
+    : inferUsageType(usage?.value);
+
+  // PF2e deliberately reports `carried` usage as equipped because carried-item rule
+  // effects are active. Market Forge only wants to prevent selling items that are
+  // actually held/worn/attached/installed/implanted.
+  if (usageType === "carried") return false;
+  return item.isEquipped === true;
+}
+
+function inferUsageType(value) {
+  const usage = String(value ?? "");
+  if (!usage || usage === "carried") return "carried";
+  if (usage.startsWith("held-in-")) return "held";
+  if (usage.startsWith("attached-to-")) return "attached";
+  if (usage.startsWith("installed-in-")) return "installed";
+  if (usage === "implanted") return "implanted";
+  if (usage.startsWith("worn")) return "worn";
+  return null;
+}
+
+function isActuallyInContainer(item) {
+  if (typeof item.isInContainer === "boolean") return item.isInContainer;
+  return Boolean(item.system?.containerId);
 }
 
 function isCurrencyItem(item, treasureCategory) {

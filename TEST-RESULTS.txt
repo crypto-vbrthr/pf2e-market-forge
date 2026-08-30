@@ -1,3 +1,5 @@
-PF2E Market Forge 0.2.1
-Automated test suite: 191/191 passed
-Search focus regression: passed
+PF2E Market Forge 0.2.2
+Automated test suite: 195/195 passed
+Party stash sale eligibility regressions: passed
+Carried-usage sale eligibility regression: passed
+Resolved-container-vs-stale-container-id regression: passed
